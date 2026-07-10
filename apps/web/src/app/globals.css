@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+/* Тёмная тема переключается классом .dark на <html> (next-themes). */
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Палитра дизайн-системы (docs/03-DESIGN-SYSTEM.md).
+  ЕДИНСТВЕННЫЙ источник цвета в проекте — эти CSS-переменные.
+  Инлайн-hex в компонентах запрещён.
+*/
+:root {
+  --background: #faf9f7;
+  --foreground: #26221e;
+  --card: #ffffff;
+  --card-foreground: #26221e;
+  --popover: #ffffff;
+  --popover-foreground: #26221e;
+  --muted: #f0ede9;
+  --muted-foreground: #6e675f;
+  --secondary: #f0ede9;
+  --secondary-foreground: #26221e;
+  --accent: #f0ede9;
+  --accent-foreground: #26221e;
+  --border: #e4e0da;
+  --input: #e4e0da;
+  --primary: #c75b12; /* абрикос — только интерактив */
+  --primary-foreground: #ffffff;
+  --ring: #c75b12;
+  --destructive: #b3261e;
+  --destructive-foreground: #ffffff;
+
+  /* Семантика уверенности ответа AI */
+  --confidence-high: #1e7f4f;
+  --confidence-low: #b07d10;
+  --confidence-none: #6e675f;
+
+  --radius: 0.625rem;
+}
+
+.dark {
+  --background: #191715;
+  --foreground: #edeae6;
+  --card: #211e1b;
+  --card-foreground: #edeae6;
+  --popover: #211e1b;
+  --popover-foreground: #edeae6;
+  --muted: #2a2724;
+  --muted-foreground: #9c948b;
+  --secondary: #2a2724;
+  --secondary-foreground: #edeae6;
+  --accent: #2a2724;
+  --accent-foreground: #edeae6;
+  --border: #37332e;
+  --input: #37332e;
+  --primary: #e8871e;
+  --primary-foreground: #1c1409;
+  --ring: #e8871e;
+  --destructive: #e5544b;
+  --destructive-foreground: #ffffff;
+
+  --confidence-high: #4fb985;
+  --confidence-low: #d6a73a;
+  --confidence-none: #9c948b;
+}
+
+/* Проброс токенов в Tailwind v4 (utility-классы bg-background, text-foreground, …). */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --font-sans: var(--font-noto-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-noto-serif), ui-serif, Georgia, serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "JetBrains Mono", monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Крупные заголовки экранов — серифом (Noto Serif Armenian). */
+  .font-display {
+    font-family: var(--font-serif);
+  }
+}

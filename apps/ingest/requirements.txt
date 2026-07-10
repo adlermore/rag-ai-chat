@@ -1,0 +1,11 @@
+# Фаза 1 — только каркас сервиса.
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+
+# Фаза 2 (заблокирована Фазой 0) — добавить тогда:
+#   docling            — парсинг PDF/DOCX/XLSX, структура и таблицы
+#   openai             — embeddings (text-embedding-3-large)
+#   qdrant-client      — upsert векторов
+#   FlagEmbedding      — bge-reranker-v2-m3 (self-hosted CPU)
+#   rank-bm25 / lunr   — BM25 с армянской токенизацией
+#   redis / bullmq-py  — статусы задач ингестии

@@ -1,0 +1,10 @@
+{"id": "q1", "question": "Քանի՞ օր վճարովի արձակուրդ ունեն աշխատակիցները տարեկան։", "expected_answer": "20 աշխատանքային օր։", "target_chunk_id": "c1", "must_refuse": false, "approved": true}
+{"id": "q2", "question": "Ե՞րբ է վճարվում աշխատավարձը։", "expected_answer": "Ամսի 15-ին և 30-ին։", "target_chunk_id": "c2", "must_refuse": false, "approved": true}
+{"id": "q3", "question": "Շաբաթական քանի՞ օր կարելի է աշխատել հեռավար։", "expected_answer": "Մինչև երեք օր։", "target_chunk_id": "c3", "must_refuse": false, "approved": true}
+{"id": "q4", "question": "Ի՞նչ պետք է ներկայացնի աշխատակիցը հիվանդության դեպքում։", "expected_answer": "Բժշկական տեղեկանք։", "target_chunk_id": "c4", "must_refuse": false, "approved": true}
+{"id": "q5", "question": "Ինչպե՞ս են փոխհատուցվում գործուղման ծախսերը։", "expected_answer": "Անդորրագրերի հիման վրա 30 օրվա ընթացքում։", "target_chunk_id": "c5", "must_refuse": false, "approved": true}
+{"id": "q6", "question": "Որո՞նք են գրասենյակի աշխատանքային ժամերը։", "expected_answer": "Երկուշաբթիից ուրբաթ՝ 09:00-18:00։", "target_chunk_id": "c6", "must_refuse": false, "approved": true}
+{"id": "q7", "question": "Որքա՞ն է ինտերնետի ամսական վճարը Երևանում։", "expected_answer": "15000 դրամ։", "target_chunk_id": "c7", "must_refuse": false, "approved": true}
+{"id": "q8", "question": "Որքա՞ն է հատկացվում մասնագիտական վերապատրաստման համար։", "expected_answer": "Մինչև 500000 դրամ տարեկան։", "target_chunk_id": "c8", "must_refuse": false, "approved": true}
+{"id": "t1", "question": "Ընկերությունը տրամադրու՞մ է անվճար ճաշ աշխատակիցներին։", "expected_answer": "", "target_chunk_id": null, "must_refuse": true, "approved": true}
+{"id": "t2", "question": "Քանի՞ օր է տևում ծնողական արձակուրդը։", "expected_answer": "", "target_chunk_id": null, "must_refuse": true, "approved": true}

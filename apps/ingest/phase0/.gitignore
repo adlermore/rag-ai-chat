@@ -1,0 +1,10 @@
+# Реальные документы заказчика и промежуточные артефакты — не коммитим.
+data/raw/*
+!data/raw/.gitkeep
+data/chunks.jsonl
+data/questions.jsonl
+reports/*
+!reports/.gitkeep
+
+__pycache__/
+*.pyc

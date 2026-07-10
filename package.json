@@ -1,0 +1,25 @@
+{
+  "name": "rag-ai-chat",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Enterprise RAG Assistant (армянский) — внутренний AI-ассистент по документам компании",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/web\" --filter \"./apps/api\" dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "infra:up": "docker compose --env-file .env -f docker/docker-compose.yml up -d",
+    "infra:down": "docker compose --env-file .env -f docker/docker-compose.yml down",
+    "infra:logs": "docker compose --env-file .env -f docker/docker-compose.yml logs -f",
+    "infra:ps": "docker compose --env-file .env -f docker/docker-compose.yml ps"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
