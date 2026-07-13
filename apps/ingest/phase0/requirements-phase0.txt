@@ -4,6 +4,9 @@
 
 # Ингестия документов
 docling==2.8.1
+# docling НЕ пинит docling-core жёстко (>=2.5.1,<3.0.0); свежие 2.8x ломают
+# импорт (BoundingBox убран из legacy_doc.base). Пиним на совместимую версию.
+docling-core==2.5.1
 
 # Embeddings — вариант A: OpenAI text-embedding-3-large (основной кандидат)
 openai==1.54.4

@@ -44,8 +44,18 @@ class Question:
     question: str
     expected_answer: str = ""
     target_chunk_id: str | None = None  # None для must_refuse
+    # Все чанки, реально содержащие ответ. При overlap ~15% один и тот же факт
+    # попадает в 2+ соседних чанка — извлечение любого из них считается хитом,
+    # иначе recall искусственно занижается. Пусто → используется target_chunk_id.
+    target_chunk_ids: list[str] = field(default_factory=list)
     must_refuse: bool = False
     approved: bool = True  # админ может reject'ить (docs/05-EVALUATION.md)
+
+    def acceptable_ids(self) -> set[str]:
+        """Множество допустимых целевых чанков (любой из них — верный ответ)."""
+        if self.target_chunk_ids:
+            return set(self.target_chunk_ids)
+        return {self.target_chunk_id} if self.target_chunk_id else set()
 
     @staticmethod
     def from_dict(d: dict[str, Any]) -> "Question":
@@ -54,6 +64,7 @@ class Question:
             question=d["question"],
             expected_answer=d.get("expected_answer", ""),
             target_chunk_id=d.get("target_chunk_id"),
+            target_chunk_ids=list(d.get("target_chunk_ids", [])),
             must_refuse=bool(d.get("must_refuse", False)),
             approved=bool(d.get("approved", True)),
         )
