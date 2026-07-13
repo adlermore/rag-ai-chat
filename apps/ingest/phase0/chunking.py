@@ -31,9 +31,69 @@ except Exception:  # tiktoken не установлен → приблизите
         return int(words * _ARMENIAN_TOKEN_FACTOR)
 
 
+# Строки-разделители и пустые ячейки markdown-таблиц (Docling плодит их из
+# объединённых ячеек) — информации не несут, только раздувают чанки.
+_TABLE_NOISE_RE = re.compile(r"^[\s|:\-]+$")
+# Сжатие горизонтального «паддинга» (внутри ячеек таблиц — десятки пробелов).
+_WS_RE = re.compile(r"[ \t]{2,}")
+# Границы предложений: армянская точка ։ (U+0589) и ascii-двоеточие/точка —
+# в армянских цифровых текстах предложение часто закрывают именно `:`.
+_SENT_SPLIT_RE = re.compile(r"(?<=[։:.;!?])\s+")
+
+
+def _clean_markdown(text: str) -> str:
+    """Убирает шум markdown-таблиц и схлопывает паддинг (см. Docling DOCX-таблицы)."""
+    out: list[str] = []
+    for ln in text.splitlines():
+        if _TABLE_NOISE_RE.match(ln):
+            continue
+        out.append(_WS_RE.sub(" ", ln).strip())
+    return "\n".join(out)
+
+
 def _split_paragraphs(text: str) -> list[str]:
     parts = re.split(r"\n\s*\n", text.strip())
     return [p.strip() for p in parts if p.strip()]
+
+
+def _hard_slice(text: str, target: int) -> list[str]:
+    """Режет по словам на куски <= target токенов (сегменты без пунктуации: таблицы и т.п.)."""
+    out: list[str] = []
+    buf: list[str] = []
+    for w in text.split():
+        buf.append(w)
+        if count_tokens(" ".join(buf)) >= target:
+            out.append(" ".join(buf))
+            buf = []
+    if buf:
+        out.append(" ".join(buf))
+    return out
+
+
+def _segments(paragraph: str, target: int) -> list[str]:
+    """Абзац → сегменты не крупнее target: по предложениям, при нужде — жёстко."""
+    if count_tokens(paragraph) <= target:
+        return [paragraph]
+    segs: list[str] = []
+    buf: list[str] = []
+    for sent in _SENT_SPLIT_RE.split(paragraph):
+        sent = sent.strip()
+        if not sent:
+            continue
+        if count_tokens(sent) > target:  # одно «предложение» само больше target
+            if buf:
+                segs.append(" ".join(buf))
+                buf = []
+            segs.extend(_hard_slice(sent, target))
+            continue
+        if buf and count_tokens(" ".join(buf + [sent])) > target:
+            segs.append(" ".join(buf))
+            buf = [sent]
+        else:
+            buf.append(sent)
+    if buf:
+        segs.append(" ".join(buf))
+    return segs
 
 
 def chunk_text(
@@ -45,11 +105,18 @@ def chunk_text(
     page: int | None = None,
     heading_path: str | None = None,
 ) -> list[Chunk]:
-    """Режет текст на чанки целевого размера с перекрытием по абзацам."""
+    """Режет текст на чанки целевого размера (300–600 ток.) с перекрытием ~15%.
+
+    Крупные абзацы и markdown-таблицы дробятся на предложения/куски, чтобы ни один
+    чанк не превышал target существенно (иначе dense-эмбеддинг теряет хвост).
+    """
     target = CONFIG.chunk_target_tokens
     overlap_tokens = int(target * CONFIG.chunk_overlap_ratio)
 
-    paragraphs = _split_paragraphs(text)
+    units: list[str] = []
+    for para in _split_paragraphs(_clean_markdown(text)):
+        units.extend(_segments(para, target))
+
     chunks: list[Chunk] = []
     buf: list[str] = []
     buf_tokens = 0
@@ -58,20 +125,20 @@ def chunk_text(
         nonlocal buf, buf_tokens
         if not buf:
             return
-        chunk_text_str = "\n\n".join(buf)
         chunks.append(
             Chunk(
                 id=str(uuid.uuid4()),
                 doc_id=doc_id,
                 doc_title=doc_title,
                 doc_type=doc_type,
-                text=chunk_text_str,
+                text="\n\n".join(buf),
                 page=page,
                 heading_path=heading_path,
             )
         )
-        # overlap: оставляем хвост последнего абзаца
-        if overlap_tokens > 0 and buf:
+        # overlap: хвостовой сегмент переносим в начало следующего чанка, но
+        # только если чанк состоял из >1 сегмента — иначе получим дубль-чанк.
+        if overlap_tokens > 0 and len(buf) > 1:
             tail = buf[-1]
             buf = [tail]
             buf_tokens = count_tokens(tail)
@@ -79,15 +146,14 @@ def chunk_text(
             buf = []
             buf_tokens = 0
 
-    for para in paragraphs:
-        ptok = count_tokens(para)
-        if buf_tokens + ptok > target and buf:
+    for unit in units:
+        utok = count_tokens(unit)
+        if buf and buf_tokens + utok > target:
             flush()
-        buf.append(para)
-        buf_tokens += ptok
+        buf.append(unit)
+        buf_tokens += utok
 
     flush()
-    # убрать возможный дубль-хвост, если последний flush создал чанк только из overlap
     return chunks
 
 

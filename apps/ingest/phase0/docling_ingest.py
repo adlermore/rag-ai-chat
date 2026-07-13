@@ -19,13 +19,21 @@ _SUPPORTED = {".pdf": "pdf", ".docx": "docx", ".xlsx": "xlsx"}
 
 def _load_converter():
     try:
-        from docling.document_converter import DocumentConverter  # ленивый импорт
+        from docling.datamodel.base_models import InputFormat  # ленивый импорт
+        from docling.datamodel.pipeline_options import PdfPipelineOptions
+        from docling.document_converter import DocumentConverter, PdfFormatOption
     except ImportError as e:  # pragma: no cover
         raise RuntimeError(
             "Docling не установлен. Выполните: "
             "pip install -r requirements-phase0.txt"
         ) from e
-    return DocumentConverter()
+    # Все PDF заказчика — цифровые (docs/01-SPEC.md), OCR не нужен: он медленный
+    # на CPU и вносит ошибки поверх точной нативной экстракции текста.
+    pdf_opts = PdfPipelineOptions()
+    pdf_opts.do_ocr = False
+    return DocumentConverter(
+        format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_opts)}
+    )
 
 
 def ingest_file(path: Path) -> list[Chunk]:

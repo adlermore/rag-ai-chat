@@ -20,12 +20,13 @@ from common import Chunk, Question, load_chunks, load_questions
 from config import CONFIG, CHUNKS_PATH, QUESTIONS_PATH, REPORTS_DIR
 from dense import DenseIndex
 from embedders import get_embedder
+from emb_cache import embed_chunks_cached
 from fusion import rrf_fuse
 from metrics import (
     MethodReport,
     build_report,
     passes_exit_criterion,
-    rank_of_target,
+    rank_of_any,
 )
 from reranker import get_reranker
 
@@ -56,15 +57,15 @@ def evaluate_embedder(
 
     print(f"\n▶ Эмбеддер: {embedder_name}")
     embedder = get_embedder(embedder_name)
-    print(f"  · эмбеддинг {len(texts)} чанков …")
-    vectors = embedder.embed(texts)
+    print(f"  · эмбеддинг {len(texts)} чанков (с дисковым кэшом) …")
+    vectors = embed_chunks_cached(embedder, ids, texts)
 
     dense_index = DenseIndex(ids, vectors)
     bm25 = BM25.from_texts(texts, ids)
     reranker = get_reranker(use_rerank)
 
     # Оцениваем только отвечаемые вопросы (у ловушек нет целевого чанка).
-    answerable = [q for q in questions if not q.must_refuse and q.target_chunk_id and q.approved]
+    answerable = [q for q in questions if not q.must_refuse and q.acceptable_ids() and q.approved]
     print(f"  · вопросов для recall: {len(answerable)}")
 
     ranks: dict[str, list[int | None]] = {
@@ -75,8 +76,8 @@ def evaluate_embedder(
     }
 
     for q in answerable:
-        target = q.target_chunk_id
-        assert target is not None
+        targets = q.acceptable_ids()
+        assert targets
         qvec = embedder.embed([q.question])[0]
 
         dense_ids = dense_index.search(qvec)
@@ -84,11 +85,11 @@ def evaluate_embedder(
         hybrid_ids = rrf_fuse([dense_ids, bm25_ids], k=CONFIG.rrf_k)
         final_ids = _final_with_rerank(q.question, hybrid_ids, chunk_by_id, reranker)
 
-        ranks["dense"].append(rank_of_target(dense_ids, target))
-        ranks["bm25"].append(rank_of_target(bm25_ids, target))
-        ranks["hybrid(RRF)"].append(rank_of_target(hybrid_ids, target))
+        ranks["dense"].append(rank_of_any(dense_ids, targets))
+        ranks["bm25"].append(rank_of_any(bm25_ids, targets))
+        ranks["hybrid(RRF)"].append(rank_of_any(hybrid_ids, targets))
         ranks[f"hybrid+rerank[{reranker.name}]"].append(
-            rank_of_target(final_ids, target)
+            rank_of_any(final_ids, targets)
         )
 
     reports = [build_report(name, r, CONFIG.recall_at) for name, r in ranks.items()]

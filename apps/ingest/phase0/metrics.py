@@ -12,6 +12,18 @@ def rank_of_target(ranked_ids: list[str], target_id: str) -> int | None:
     return None
 
 
+def rank_of_any(ranked_ids: list[str], target_ids: set[str]) -> int | None:
+    """Лучшая (минимальная) позиция среди любого из допустимых целевых чанков.
+
+    При overlap один ответ живёт в нескольких чанках → верным считается
+    извлечение любого из них (первый по порядку выдачи).
+    """
+    for i, cid in enumerate(ranked_ids, start=1):
+        if cid in target_ids:
+            return i
+    return None
+
+
 def recall_at_k(ranks: list[int | None], k: int) -> float:
     """Доля вопросов, у которых целевой чанк попал в top-k."""
     if not ranks:

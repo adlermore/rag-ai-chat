@@ -3,6 +3,8 @@ data/raw/*
 !data/raw/.gitkeep
 data/chunks.jsonl
 data/questions.jsonl
+data/emb_*.jsonl
+.venv/
 reports/*
 !reports/.gitkeep
 
