@@ -37,3 +37,6 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Загруженные документы (локальное хранилище до MinIO)
+var/

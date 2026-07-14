@@ -1,0 +1,41 @@
+import { apiFetch, ApiError } from "./client";
+import { tokenStorage } from "@/lib/auth/storage";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+
+export type DocStatus = "queued" | "processing" | "ready" | "failed";
+
+export interface AdminDocument {
+  id: string;
+  title: string;
+  type: "pdf" | "docx" | "xlsx";
+  status: DocStatus;
+  chunkCount: number | null;
+  errorMessage: string | null;
+  createdAt: string;
+}
+
+export const documentsApi = {
+  list(): Promise<AdminDocument[]> {
+    return apiFetch<AdminDocument[]>("/admin/documents");
+  },
+
+  /** Multipart-загрузка (apiFetch не годится: он сериализует body в JSON). */
+  async upload(file: File, title: string): Promise<AdminDocument> {
+    const fd = new FormData();
+    fd.append("title", title);
+    fd.append("file", file);
+    const res = await fetch(`${API_URL}/admin/documents/upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenStorage.access ?? ""}` },
+      body: fd,
+    });
+    const data = (await res.json().catch(() => null)) as
+      | (AdminDocument & { code?: string; message?: string })
+      | null;
+    if (!res.ok) {
+      throw new ApiError(res.status, data?.code ?? "error", data?.message ?? "Սխալ");
+    }
+    return data as AdminDocument;
+  },
+};
