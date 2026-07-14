@@ -44,8 +44,10 @@ class IngestResponse(BaseModel):
 
 class SearchHitDTO(BaseModel):
     chunk_id: str
+    score: float
     text: str
     document_id: str | None = None
+    doc_title: str | None = None
     page: int | None = None
     sheet: str | None = None
     row: int | None = None
@@ -97,6 +99,35 @@ async def ingest(
     )
 
 
+class IngestPathRequest(BaseModel):
+    path: str
+    document_id: str
+    version: int = 1
+    title: str | None = None
+
+
+@app.post("/ingest-path", response_model=IngestResponse)
+def ingest_path(req: IngestPathRequest) -> IngestResponse:
+    """Ингестия документа по серверному пути (модель «один сервер»; вызывается
+    из NestJS-api при загрузке документа через админку)."""
+    if not Path(req.path).is_file():
+        raise HTTPException(400, f"Файл не найден: {req.path}")
+    try:
+        result = pipeline().ingest_document(
+            req.path,
+            document_id=req.document_id,
+            version=req.version,
+            doc_title=req.title,
+        )
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, f"Ошибка ингестии: {e}") from e
+    return IngestResponse(
+        document_id=result.document_id,
+        chunk_count=result.chunk_count,
+        collection=result.collection,
+    )
+
+
 @app.get("/search", response_model=list[SearchHitDTO])
 def search(q: str, top: int = 5) -> list[SearchHitDTO]:
     """Гибридный поиск (dense + BM25 → RRF → rerank). Для проверки/демо ингестии."""
@@ -104,8 +135,10 @@ def search(q: str, top: int = 5) -> list[SearchHitDTO]:
     return [
         SearchHitDTO(
             chunk_id=h.chunk_id,
+            score=h.score,
             text=h.payload.get("text", ""),
             document_id=h.payload.get("document_id"),
+            doc_title=h.payload.get("doc_title"),
             page=h.payload.get("page"),
             sheet=h.payload.get("sheet"),
             row=h.payload.get("row"),

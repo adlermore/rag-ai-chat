@@ -49,13 +49,18 @@
 
 ## Фаза 3 — Чат и RAG-пайплайн (недели 3–4)
 
-- [ ] API: query rewriting → hybrid search → RRF → rerank → двухпороговый guardrail →
-      context builder → LLM (SSE-стрим) → grounding-проверка → сохранение
-      message + sources + метрик.
-- [ ] Кэш Redis (нормализованный вопрос → ответ) + инвалидация при обновлении документов.
+- [x] API (backend): hybrid search → RRF → rerank → двухпороговый guardrail →
+      context builder → LLM (SSE-стрим) → сохранение message + sources.
+      Проверено e2e: релевантный вопрос → high + источники; off-topic → refused
+      без LLM. LLM-провайдер: openai/anthropic/**stub** (работает без ключа).
+- [~] Остаток: query rewriting (сейчас pass-through), grounding-проверка (базовая),
+      токен-метрики, Redis-кэш (нормализованный вопрос → ответ) + инвалидация.
 - [ ] UI чата по `03-DESIGN-SYSTEM.md`: стриминг, цитатные чипы ⟨n⟩ с HoverCard,
       карточки источников, кромка уверенности, состояния отказа/неуверенности,
       пустой чат с примерами вопросов, история чатов, мобильная версия.
+
+> Для реальных ответов (не stub) нужен ключ LLM: `OPENAI_API_KEY` (с балансом)
+> или `ANTHROPIC_API_KEY`. Retrieval бесплатен (bge-m3).
 
 ## Фаза 4 — Evaluation и калибровка (неделя 5)
 

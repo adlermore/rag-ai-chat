@@ -15,12 +15,25 @@ class Reranker(Protocol):
     def rerank(self, query: str, candidates: list[tuple[str, str]]) -> list[str]:
         ...
 
+    def rerank_scored(
+        self, query: str, candidates: list[tuple[str, str]]
+    ) -> list[tuple[str, float]]:
+        """Как rerank, но с оценкой релевантности (сигнал для guardrail)."""
+        ...
+
 
 class IdentityReranker:
     name = "identity(no-rerank)"
 
     def rerank(self, query: str, candidates: list[tuple[str, str]]) -> list[str]:
         return [cid for cid, _ in candidates]
+
+    def rerank_scored(
+        self, query: str, candidates: list[tuple[str, str]]
+    ) -> list[tuple[str, float]]:
+        # Синтетический убывающий скор (без модели осмысленного скора нет).
+        n = len(candidates)
+        return [(cid, (n - i) / n) for i, (cid, _) in enumerate(candidates)]
 
 
 class BgeReranker:
@@ -34,6 +47,11 @@ class BgeReranker:
         self._model = FlagReranker(self.name, use_fp16=False, devices=cfg.device)
 
     def rerank(self, query: str, candidates: list[tuple[str, str]]) -> list[str]:
+        return [cid for cid, _ in self.rerank_scored(query, candidates)]
+
+    def rerank_scored(
+        self, query: str, candidates: list[tuple[str, str]]
+    ) -> list[tuple[str, float]]:
         if not candidates:
             return []
         pairs = [[query, text] for _, text in candidates]
@@ -41,7 +59,7 @@ class BgeReranker:
         if not isinstance(scores, list):
             scores = [scores]
         order = sorted(range(len(candidates)), key=lambda i: scores[i], reverse=True)
-        return [candidates[i][0] for i in order]
+        return [(candidates[i][0], float(scores[i])) for i in order]
 
 
 def get_reranker(use_model: bool = True) -> Reranker:

@@ -107,14 +107,11 @@ class IngestPipeline:
         for cid in head:
             text = payload_by_id.get(cid, {}).get("text") or self._texts.get(cid, "")
             cand_texts.append((cid, text))
-        ranked_ids = self.reranker.rerank(query, cand_texts)
+        ranked = self.reranker.rerank_scored(query, cand_texts)
 
-        # Собираем итоговые хиты в порядке reranker (payload дотягиваем из Qdrant).
+        # Итоговые хиты в порядке reranker со скором релевантности (сигнал guardrail).
         out: list[SearchHit] = []
-        for cid in ranked_ids[:top_out]:
-            payload = payload_by_id.get(cid)
-            if payload is None:
-                # чанк пришёл только из BM25 — подтянем payload точечным поиском
-                payload = {"text": self._texts.get(cid, "")}
-            out.append(SearchHit(chunk_id=cid, score=0.0, payload=payload))
+        for cid, score in ranked[:top_out]:
+            payload = payload_by_id.get(cid) or {"text": self._texts.get(cid, "")}
+            out.append(SearchHit(chunk_id=cid, score=score, payload=payload))
         return out

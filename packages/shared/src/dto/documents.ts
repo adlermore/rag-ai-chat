@@ -12,6 +12,18 @@ export const uploadDocumentMetaSchema = z.object({
 });
 export type UploadDocumentMeta = z.infer<typeof uploadDocumentMetaSchema>;
 
+/**
+ * Регистрация документа по серверному пути (модель «один сервер», docs/01-SPEC).
+ * Файл уже лежит на сервере; api создаёт запись и запускает ингестию.
+ * (Загрузка через MinIO/multipart — следующий инкремент.)
+ */
+export const registerDocumentSchema = z.object({
+  title: z.string().min(1).max(300),
+  type: z.enum([DocumentType.Pdf, DocumentType.Docx, DocumentType.Xlsx]),
+  path: z.string().min(1).max(1000),
+});
+export type RegisterDocumentRequest = z.infer<typeof registerDocumentSchema>;
+
 export const listDocumentsQuerySchema = z.object({
   status: z
     .enum([
