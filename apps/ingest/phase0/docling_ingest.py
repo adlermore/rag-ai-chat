@@ -8,13 +8,36 @@
 """
 from __future__ import annotations
 
+import hashlib
 import uuid
 from pathlib import Path
 
 from chunking import chunk_text
 from common import Chunk
+from config import DATA_DIR
 
 _SUPPORTED = {".pdf": "pdf", ".docx": "docx", ".xlsx": "xlsx"}
+
+# Кэш markdown-экспорта Docling: парсинг PDF на CPU — самый долгий шаг, а при
+# подборе размера чанка (Фаза 0) документ приходится перечанковывать много раз.
+# Кэшируем по (имя, размер, mtime), чтобы перечанковка шла без повторного парсинга.
+_MD_CACHE_DIR = DATA_DIR / "_md_cache"
+
+
+def _markdown_for(path: Path) -> str:
+    stat = path.stat()
+    key = f"{path.name}:{stat.st_size}:{int(stat.st_mtime)}"
+    cache_file = _MD_CACHE_DIR / (hashlib.md5(key.encode()).hexdigest() + ".md")
+    if cache_file.exists():
+        return cache_file.read_text(encoding="utf-8")
+
+    converter = _load_converter()
+    result = converter.convert(str(path))
+    markdown = result.document.export_to_markdown()
+
+    _MD_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_file.write_text(markdown, encoding="utf-8")
+    return markdown
 
 
 def _load_converter():
@@ -42,16 +65,12 @@ def ingest_file(path: Path) -> list[Chunk]:
     if not doc_type:
         raise ValueError(f"Неподдерживаемый формат: {path.suffix}")
 
-    converter = _load_converter()
-    result = converter.convert(str(path))
-    doc = result.document
-
     doc_id = str(uuid.uuid4())
     doc_title = path.stem
 
     # Docling даёт структурированный markdown; для Фазы 0 этого достаточно,
     # чтобы нарезать осмысленные чанки. Точный per-page split — TODO Фазы 2.
-    markdown = doc.export_to_markdown()
+    markdown = _markdown_for(path)
     return chunk_text(
         markdown,
         doc_id=doc_id,

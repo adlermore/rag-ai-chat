@@ -88,7 +88,19 @@ class BgeM3Embedder:
             raise RuntimeError(
                 "Установите зависимости: pip install -r requirements-phase0.txt"
             ) from e
-        self._model = BGEM3FlagModel(self.name, use_fp16=False)
+        # Форсируем CPU: целевая среда — сервер без GPU (docs/02-ARCHITECTURE.md,
+        # «self-hosted CPU»), а на Apple Silicon MPS падает по нехватке памяти при
+        # батч-эмбеддинге. CPU-прогон также репрезентативен для прода.
+        # batch_size=16: на CPU крупный батч (128) паддится до самой длинной
+        # последовательности → тяжёлый forward; мелкий батч заметно быстрее.
+        import os as _os
+
+        import torch as _torch
+
+        _torch.set_num_threads(_os.cpu_count() or 4)
+        self._model = BGEM3FlagModel(
+            self.name, use_fp16=False, devices="cpu", batch_size=16
+        )
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         result = self._model.encode(texts, return_dense=True)["dense_vecs"]

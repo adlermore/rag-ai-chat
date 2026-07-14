@@ -1,10 +1,13 @@
 """
 Структурный чанкинг: 300–600 токенов, overlap ~15% (docs/02-ARCHITECTURE.md).
 
-Оценка числа токенов — приблизительная (по словам с поправкой на армянский,
-который даёт ~+25% токенов). Если установлен tiktoken — используется он.
-Это версия для Фазы 0; продовый чанкинг (по структуре Docling, Excel «строка+
-шапка+лист») реализуется в Фазе 2.
+Размер чанка меряем токенайзером, близким к моделям эмбеддинга. tiktoken/cl100k
+(токенайзер GPT) НЕПРИГОДЕН для армянского: он почти не знает эту письменность и
+раздувает счёт в ~9–16× (замер Фазы 0), из-за чего чанки выходили по 1–2
+предложения (медиана 34 слова) вместо 300–600 токенов. Используем мультиязычный
+XLM-Roberta — токенайзер bge-m3 (~1.8 токена/слово на армянском); при его
+отсутствии (smoke-тест без transformers) — оценка по словам.
+Продовый чанкинг (по структуре Docling, Excel «строка+шапка+лист») — Фаза 2.
 """
 from __future__ import annotations
 
@@ -14,21 +17,27 @@ import uuid
 from common import Chunk
 from config import CONFIG
 
-_ARMENIAN_TOKEN_FACTOR = 1.25  # армянский текст ~ +25% токенов к числу слов
+_ARMENIAN_TOKEN_FACTOR = 1.85  # армянский: ~1.85 subword-токена на слово (замер bge-m3)
 
-try:
-    import tiktoken  # type: ignore
+# Ленивый токенайзер bge-m3: грузим один раз при первом вызове, чтобы не тянуть
+# transformers при импорте модуля (важно для smoke-теста и unit-тестов чанкинга).
+_TOKENIZER = None
+_TOKENIZER_TRIED = False
 
-    _ENC = tiktoken.get_encoding("cl100k_base")
 
-    def count_tokens(text: str) -> int:
-        return len(_ENC.encode(text))
+def count_tokens(text: str) -> int:
+    global _TOKENIZER, _TOKENIZER_TRIED
+    if not _TOKENIZER_TRIED:
+        _TOKENIZER_TRIED = True
+        try:
+            from transformers import AutoTokenizer  # type: ignore
 
-except Exception:  # tiktoken не установлен → приблизительно по словам
-
-    def count_tokens(text: str) -> int:
-        words = len(text.split())
-        return int(words * _ARMENIAN_TOKEN_FACTOR)
+            _TOKENIZER = AutoTokenizer.from_pretrained(CONFIG.bge_m3_model)
+        except Exception:
+            _TOKENIZER = None  # fallback на пословную оценку
+    if _TOKENIZER is not None:
+        return len(_TOKENIZER.encode(text, add_special_tokens=False))
+    return int(len(text.split()) * _ARMENIAN_TOKEN_FACTOR)
 
 
 # Строки-разделители и пустые ячейки markdown-таблиц (Docling плодит их из
