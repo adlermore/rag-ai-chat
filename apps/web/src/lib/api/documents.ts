@@ -20,6 +20,18 @@ export const documentsApi = {
     return apiFetch<AdminDocument[]>("/admin/documents");
   },
 
+  remove(id: string): Promise<{ deleted: boolean }> {
+    return apiFetch<{ deleted: boolean }>(`/admin/documents/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  reindex(id: string): Promise<AdminDocument> {
+    return apiFetch<AdminDocument>(`/admin/documents/${id}/reindex`, {
+      method: "POST",
+    });
+  },
+
   /** Multipart-загрузка (apiFetch не годится: он сериализует body в JSON). */
   async upload(file: File, title: string): Promise<AdminDocument> {
     const fd = new FormData();

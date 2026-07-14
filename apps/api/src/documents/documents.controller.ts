@@ -7,6 +7,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -53,6 +54,38 @@ export class DocumentsController {
   @Get(":id")
   get(@Param("id", ParseUUIDPipe) id: string) {
     return this.documents.get(id);
+  }
+
+  @Delete(":id")
+  async remove(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    const doc = await this.documents.remove(id);
+    await this.audit.log({
+      adminId: admin.id,
+      action: "document.delete",
+      entity: "document",
+      entityId: id,
+      payload: { title: doc.title, type: doc.type },
+    });
+    return { deleted: true };
+  }
+
+  @Post(":id/reindex")
+  async reindex(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    const doc = await this.documents.reindex(id);
+    await this.audit.log({
+      adminId: admin.id,
+      action: "document.reindex",
+      entity: "document",
+      entityId: id,
+      payload: { title: doc.title, version: doc.version },
+    });
+    return doc;
   }
 
   /**

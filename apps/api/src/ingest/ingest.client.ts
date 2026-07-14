@@ -59,6 +59,16 @@ export class IngestClient {
     };
   }
 
+  async deleteDocument(documentId: string): Promise<void> {
+    const resp = await fetch(
+      `${this.baseUrl}/documents/${encodeURIComponent(documentId)}`,
+      { method: "DELETE" },
+    );
+    if (!resp.ok) {
+      throw new Error(`ingest DELETE /documents ${resp.status}: ${await resp.text()}`);
+    }
+  }
+
   async search(query: string, top: number): Promise<RetrievalHit[]> {
     const url = `${this.baseUrl}/search?q=${encodeURIComponent(query)}&top=${top}`;
     const resp = await fetch(url);

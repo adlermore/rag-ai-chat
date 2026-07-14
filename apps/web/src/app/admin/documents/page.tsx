@@ -4,6 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Badge,
   Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Skeleton,
   Table,
   TableBody,
@@ -12,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@rag/ui";
-import { FileText } from "lucide-react";
+import { FileText, RotateCw, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { UploadDocumentDialog } from "@/components/admin/upload-document-dialog";
 import { documentsApi, type AdminDocument, type DocStatus } from "@/lib/api/documents";
@@ -79,6 +85,8 @@ function StatusBadge({ doc }: { doc: AdminDocument }) {
 export default function DocumentsPage() {
   const [state, setState] = useState<LoadState>("loading");
   const [docs, setDocs] = useState<AdminDocument[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<AdminDocument | null>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setState("loading");
@@ -104,6 +112,27 @@ export default function DocumentsPage() {
     return () => clearInterval(timer);
   }, [state, indexing, load]);
 
+  async function onReindex(doc: AdminDocument) {
+    setBusyId(doc.id);
+    try {
+      await documentsApi.reindex(doc.id);
+      await load(true);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function onDelete(doc: AdminDocument) {
+    setBusyId(doc.id);
+    try {
+      await documentsApi.remove(doc.id);
+      setConfirmDelete(null);
+      await load(true);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <>
       <PageHeader
@@ -126,6 +155,7 @@ export default function DocumentsPage() {
                 <TableHead>{t("docs.colStatus")}</TableHead>
                 <TableHead className="text-right">{t("docs.colChunks")}</TableHead>
                 <TableHead>{t("docs.colCreated")}</TableHead>
+                <TableHead className="text-right">{t("docs.colActions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -148,12 +178,72 @@ export default function DocumentsPage() {
                   <TableCell className="font-mono text-xs text-muted-foreground">
                     {formatDate(d.createdAt)}
                   </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={t("docs.reindex")}
+                        aria-label={t("docs.reindex")}
+                        disabled={busyId === d.id || d.status === "processing"}
+                        onClick={() => void onReindex(d)}
+                      >
+                        <RotateCw className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={t("docs.delete")}
+                        aria-label={t("docs.delete")}
+                        className="text-destructive hover:text-destructive"
+                        disabled={busyId === d.id}
+                        onClick={() => setConfirmDelete(d)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         ) : null}
       </div>
+
+      {/* Подтверждение удаления: предупреждение об инвалидации кэша и источников */}
+      <Dialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("docs.deleteTitle")}</DialogTitle>
+            <DialogDescription>
+              <span className="font-medium text-foreground">
+                {confirmDelete?.title}
+              </span>
+              <br />
+              {t("docs.deleteWarning")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDelete(null)}
+              disabled={busyId !== null}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={busyId !== null}
+              onClick={() => confirmDelete && void onDelete(confirmDelete)}
+            >
+              {busyId ? t("docs.deleting") : t("docs.delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

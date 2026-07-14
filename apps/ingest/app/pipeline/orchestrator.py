@@ -39,8 +39,10 @@ class IngestPipeline:
         self._embedder = embedder
         self._reranker = reranker
         self._use_rerank = use_rerank
-        # In-memory тексты чанков для BM25 (перестраивается при изменении корпуса).
+        # In-memory тексты чанков для BM25 (перестраивается при изменении корпуса)
+        # + принадлежность чанков документам (для удаления/переиндексации).
         self._texts: dict[str, str] = {}
+        self._doc_chunks: dict[str, list[str]] = {}
         self._bm25: BM25 | None = None
 
     # ── ленивые модели ──
@@ -78,13 +80,26 @@ class IngestPipeline:
             return IngestResult(document_id, 0, collection)
 
         vectors = self.embedder.embed([c.text for c in chunks])
+
+        # Идемпотентность/переиндексация: старые точки документа удаляются до
+        # upsert новых (id чанков — новые uuid, иначе остались бы дубли).
+        self.delete_document(document_id, collection=collection)
         self.store.upsert(collection, chunks, vectors, doc_title=doc_title)
 
         for c in chunks:
             self._texts[c.id] = c.text
+        self._doc_chunks[document_id] = [c.id for c in chunks]
         self._rebuild_bm25()
 
         return IngestResult(document_id, len(chunks), collection)
+
+    def delete_document(self, document_id: str, *, collection: str | None = None) -> None:
+        """Удаляет чанки документа из Qdrant и BM25-индекса в памяти."""
+        collection = collection or self.cfg.collection
+        self.store.delete_document(collection, document_id)
+        for cid in self._doc_chunks.pop(document_id, []):
+            self._texts.pop(cid, None)
+        self._rebuild_bm25()
 
     # ── поиск (dense + BM25 → RRF → rerank) ──
     def search(

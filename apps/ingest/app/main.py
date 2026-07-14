@@ -128,6 +128,16 @@ def ingest_path(req: IngestPathRequest) -> IngestResponse:
     )
 
 
+@app.delete("/documents/{document_id}")
+def delete_document(document_id: str) -> dict[str, str]:
+    """Удаляет чанки документа из индекса (вызывается api при удалении/замене)."""
+    try:
+        pipeline().delete_document(document_id)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, f"Ошибка удаления: {e}") from e
+    return {"status": "deleted", "document_id": document_id}
+
+
 @app.get("/search", response_model=list[SearchHitDTO])
 def search(q: str, top: int = 5) -> list[SearchHitDTO]:
     """Гибридный поиск (dense + BM25 → RRF → rerank). Для проверки/демо ингестии."""
