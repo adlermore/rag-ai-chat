@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MessageSource } from "@rag/shared";
 import { Button, cn } from "@rag/ui";
-import { LogOut, MessageSquarePlus, Plus } from "lucide-react";
+import { LogOut, MessageSquarePlus, Plus, Sparkles } from "lucide-react";
 import { RequireAuth } from "@/components/auth/require-auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth/context";
@@ -63,7 +63,8 @@ function ChatWorkspace() {
       let chatId = activeId;
       try {
         if (!chatId) {
-          const chat = await chatApi.create();
+          // Заголовок чата — первый вопрос (обрезанный), а не «Новый чат».
+          const chat = await chatApi.create(text.slice(0, 80));
           chatId = chat.id;
           setActiveId(chat.id);
           setChats((prev) => [chat, ...prev]);
@@ -118,105 +119,133 @@ function ChatWorkspace() {
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Sidebar: история чатов (на мобиле скрыт — Sheet в след. инкременте) */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card md:flex">
-        <div className="flex items-center justify-between px-4 py-3">
-          <span className="text-sm font-semibold text-foreground">
-            {t("chat.historyTitle")}
+      {/* Sidebar: бренд + история чатов (мобильный Sheet — след. инкремент) */}
+      <aside className="hidden w-72 shrink-0 flex-col border-e border-border bg-card md:flex">
+        <div className="flex items-center gap-2.5 px-4 pb-4 pt-5">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+            <Sparkles className="size-4 text-primary" />
           </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={newChat}
-            aria-label={t("chat.newChat")}
-          >
-            <Plus className="size-4" />
+          <span className="font-display text-[15px] font-semibold leading-tight text-foreground">
+            {t("app.name")}
+          </span>
+        </div>
+
+        <div className="px-3 pb-2">
+          <Button variant="outline" className="w-full justify-start gap-2" onClick={newChat}>
+            <Plus className="size-4 text-primary" />
+            {t("chat.newChat")}
           </Button>
         </div>
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
+
+        {chats.length > 0 && (
+          <p className="px-5 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {t("chat.historyTitle")}
+          </p>
+        )}
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-3">
           {chats.map((c) => (
             <button
               key={c.id}
               type="button"
               onClick={() => selectChat(c.id)}
               className={cn(
-                "block w-full truncate rounded-md px-2 py-1.5 text-start text-[13px]",
+                "block w-full truncate rounded-lg px-2.5 py-2 text-start text-[13px] leading-5 transition-colors",
                 c.id === activeId
                   ? "bg-muted font-medium text-foreground"
-                  : "text-muted-foreground hover:bg-muted",
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
               )}
             >
               {c.title}
             </button>
           ))}
         </nav>
+
+        <div className="border-t border-border px-4 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-[12px] text-muted-foreground" dir="ltr">
+              {user?.email}
+            </span>
+            <div className="flex shrink-0 items-center gap-1">
+              <ThemeToggle />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={logout}
+                aria-label={t("auth.logout")}
+                title={t("auth.logout")}
+              >
+                <LogOut className="size-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
       </aside>
 
       {/* Основная область */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-border px-4 py-2.5">
+        {/* Мобильный хедер (на десктопе всё в сайдбаре) */}
+        <header className="flex items-center justify-between border-b border-border px-4 py-2.5 md:hidden">
           <div className="flex items-center gap-2">
+            <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+              <Sparkles className="size-3.5 text-primary" />
+            </span>
+            <span className="font-display text-sm font-semibold text-foreground">
+              {t("app.name")}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
               onClick={newChat}
               aria-label={t("chat.newChat")}
             >
               <MessageSquarePlus className="size-4" />
             </Button>
-            <span className="text-sm font-semibold text-foreground">
-              {t("app.name")}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
             <ThemeToggle />
-            <span
-              className="hidden text-[13px] text-muted-foreground sm:inline"
-              dir="ltr"
-            >
-              {user?.email}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={logout}
-            >
+            <Button variant="ghost" size="icon" onClick={logout} aria-label={t("auth.logout")}>
               <LogOut className="size-4" />
-              {t("auth.logout")}
             </Button>
           </div>
         </header>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-3xl px-4 py-6">
-            {showEmpty ? (
-              <div className="flex flex-col items-center gap-6 py-16 text-center">
+          {showEmpty ? (
+            <div className="flex h-full items-center justify-center px-4">
+              <div className="flex w-full max-w-lg flex-col items-center gap-8 pb-24 text-center">
                 <div>
                   <h1 className="font-display text-[28px] font-bold leading-9 text-foreground">
                     {t("chat.emptyTitle")}
                   </h1>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="mt-2 text-sm text-muted-foreground">
                     {t("chat.emptyHint")}
                   </p>
                 </div>
-                <div className="flex w-full max-w-xl flex-col gap-2">
+                <div className="flex w-full flex-col gap-2.5">
                   {EXAMPLES.map((key) => (
                     <button
                       key={key}
                       type="button"
                       disabled={busy}
                       onClick={() => send(t(key))}
-                      className="rounded-xl border border-border bg-card px-4 py-3 text-start text-[15px] text-foreground transition-colors hover:border-primary/40 hover:bg-muted disabled:opacity-60"
+                      className={cn(
+                        "group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3",
+                        "text-start text-[14px] leading-5 text-foreground",
+                        "transition-all hover:border-primary/40 hover:shadow-[0_2px_8px_rgb(0_0_0/0.05)]",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        "disabled:opacity-60",
+                      )}
                     >
+                      <MessageSquarePlus className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
                       {t(key)}
                     </button>
                   ))}
                 </div>
               </div>
-            ) : (
-              <div className="space-y-4">
+            </div>
+          ) : (
+            <div className="mx-auto w-full max-w-3xl px-4 py-8">
+              <div className="space-y-5">
                 {messages.map((m) => (
                   <MessageBubble key={m.id} message={m} />
                 ))}
@@ -226,18 +255,18 @@ function ChatWorkspace() {
                     message={{
                       id: "streaming",
                       role: "assistant",
-                      content: streamContent || t("chat.thinking"),
+                      content: streamContent,
                       confidence: "high",
                       sources: streamSources,
                     }}
                   />
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        <div className="border-t border-border px-4 py-3">
+        <div className="px-4 pb-4 pt-1">
           <div className="mx-auto max-w-3xl">
             <Composer disabled={busy} onSend={send} />
           </div>

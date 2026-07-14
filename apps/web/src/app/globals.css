@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* packages/ui — workspace-пакет (symlink в node_modules): авто-сканер Tailwind v4
+   его не видит, и классы компонентов (Button и др.) не попадали в собранный CSS. */
+@source "../../../../packages/ui/src";
+
 /* Тёмная тема переключается классом .dark на <html> (next-themes). */
 @custom-variant dark (&:is(.dark *));
 

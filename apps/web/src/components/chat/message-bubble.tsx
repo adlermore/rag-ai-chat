@@ -2,9 +2,9 @@
 
 import type { MessageSource } from "@rag/shared";
 import { cn } from "@rag/ui";
-import { Search } from "lucide-react";
+import { FileSpreadsheet, FileText, SearchX } from "lucide-react";
 import { t } from "@/lib/i18n";
-import { renderWithCitations } from "./citation";
+import { MarkdownAnswer } from "./markdown";
 import type { ChatMessage, Confidence } from "@/lib/api/chat";
 
 const CONFIDENCE_VAR: Record<Confidence, string> = {
@@ -26,23 +26,40 @@ function SourceCard({
   if (source.page != null) loc.push(`${t("chat.page")} ${source.page}`);
   if (source.sheet) loc.push(`${t("chat.sheet")} ${source.sheet}`);
   if (source.row != null) loc.push(`${t("chat.row")} ${source.row}`);
+  const Icon = source.documentType === "xlsx" ? FileSpreadsheet : FileText;
   return (
     <li
       id={`src-${messageId}-${marker}`}
-      className="flex items-baseline gap-2 rounded-md px-2 py-1.5 text-[13px] hover:bg-muted"
+      className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5 transition-colors hover:border-primary/40 hover:bg-muted/60"
     >
-      <span className="mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-primary/40 px-1 text-[11px] tabular-nums text-primary">
+      <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md border border-primary/40 px-1 text-[11px] font-medium tabular-nums text-primary">
         {marker}
       </span>
-      <span className="min-w-0">
+      <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="min-w-0 truncate text-[13px]">
         <span className="font-medium text-foreground">{source.documentTitle}</span>
-        <span className="text-muted-foreground">
-          {" · "}
-          {source.documentType.toUpperCase()}
-          {loc.length ? ` · ${loc.join(", ")}` : ""}
-        </span>
+        {loc.length > 0 && (
+          <span className="text-muted-foreground"> · {loc.join(", ")}</span>
+        )}
       </span>
     </li>
+  );
+}
+
+function ThinkingDots() {
+  return (
+    <span className="inline-flex items-center gap-1.5 py-1" aria-label={t("chat.thinking")}>
+      <span className="text-[13px] text-muted-foreground">{t("chat.thinking")}</span>
+      <span className="inline-flex gap-0.5">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="size-1 animate-bounce rounded-full bg-muted-foreground/60"
+            style={{ animationDelay: `${i * 150}ms` }}
+          />
+        ))}
+      </span>
+    </span>
   );
 }
 
@@ -56,7 +73,7 @@ export function MessageBubble({
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-muted px-4 py-2.5 text-[15px] text-foreground">
+        <div className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-muted px-4 py-2.5 text-[15px] leading-relaxed text-foreground">
           {message.content}
         </div>
       </div>
@@ -65,49 +82,71 @@ export function MessageBubble({
 
   const confidence = (message.confidence ?? "high") as Confidence;
   const sources = message.sources ?? [];
-  const isRefusal = confidence === "refused";
 
-  // Отказ — спокойная серая карточка, НЕ ошибка (docs/03-DESIGN-SYSTEM.md).
-  if (isRefusal) {
+  // Отказ — спокойная карточка, НЕ ошибка (docs/03-DESIGN-SYSTEM.md).
+  if (confidence === "refused" && !streaming) {
     return (
       <div className="flex justify-start">
-        <div className="max-w-[85%] rounded-2xl border border-border bg-muted/40 px-4 py-3">
-          <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
-            <Search className="size-4" />
-            {t("chat.refusedTitle")}
-          </div>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            {t("chat.refusedHint")}
-          </p>
+        <div className="flex max-w-[85%] items-start gap-3 rounded-2xl rounded-bl-md border border-border bg-muted/40 px-4 py-3.5">
+          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+            <SearchX className="size-4 text-muted-foreground" />
+          </span>
+          <span>
+            <span className="block text-[14px] font-semibold text-foreground">
+              {t("chat.refusedTitle")}
+            </span>
+            <span className="mt-0.5 block text-[13px] leading-relaxed text-muted-foreground">
+              {t("chat.refusedHint")}
+            </span>
+          </span>
         </div>
       </div>
     );
   }
 
+  const thinking = streaming && message.content.trim().length === 0;
+
   return (
     <div className="flex justify-start">
       <div
-        className="max-w-[85%] rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-3"
-        style={{ borderInlineStartWidth: 3, borderInlineStartColor: CONFIDENCE_VAR[confidence] }}
+        className={cn(
+          "max-w-[85%] rounded-2xl rounded-bl-md border border-border bg-card px-4 py-3 shadow-[0_1px_2px_rgb(0_0_0/0.04)]",
+        )}
+        style={{
+          borderInlineStartWidth: 3,
+          borderInlineStartColor: CONFIDENCE_VAR[confidence],
+        }}
       >
-        {confidence === "low" && (
-          <p className="mb-1.5 text-xs font-medium" style={{ color: CONFIDENCE_VAR.low }}>
+        {confidence === "low" && !streaming && (
+          <p
+            className="mb-2 flex items-center gap-1.5 text-xs font-medium"
+            style={{ color: CONFIDENCE_VAR.low }}
+          >
             {t("chat.confidenceLow")}
           </p>
         )}
-        <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
-          {renderWithCitations(message.content, sources, message.id)}
-          {streaming && (
-            <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-middle" />
-          )}
-        </div>
+
+        {thinking ? (
+          <ThinkingDots />
+        ) : (
+          <div className="text-[15px] text-foreground">
+            <MarkdownAnswer
+              text={message.content}
+              sources={sources}
+              messageId={message.id}
+            />
+            {streaming && (
+              <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse rounded-full bg-primary align-middle" />
+            )}
+          </div>
+        )}
 
         {sources.length > 0 && (
-          <div className="mt-3 border-t border-border pt-2">
-            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="mt-3 border-t border-border pt-2.5">
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               {t("chat.sources")}
             </p>
-            <ul className="space-y-0.5">
+            <ul className="flex flex-col gap-1">
               {sources.map((s, i) => (
                 <SourceCard
                   key={s.id}

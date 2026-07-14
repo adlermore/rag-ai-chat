@@ -37,11 +37,35 @@ export class ChatService {
 
   async listMessages(chatId: string, userId: string) {
     await this.assertOwnedChat(chatId, userId);
-    return this.prisma.message.findMany({
+    const rows = await this.prisma.message.findMany({
       where: { chatId },
       orderBy: { createdAt: "asc" },
-      include: { sources: true },
+      // Название/тип документа денормализуются в DTO источника (контракт
+      // @rag/shared MessageSource) — иначе история рендерит пустые карточки.
+      include: {
+        sources: {
+          include: { document: { select: { title: true, type: true } } },
+        },
+      },
     });
+    return rows.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      confidence: m.confidence,
+      createdAt: m.createdAt,
+      sources: m.sources.map((s) => ({
+        id: s.id,
+        documentId: s.documentId,
+        documentTitle: s.document.title,
+        documentType: s.document.type,
+        page: s.page,
+        sheet: s.sheet,
+        row: s.row,
+        chunkId: s.chunkId,
+        score: s.score,
+      })),
+    }));
   }
 
   private async assertOwnedChat(chatId: string, userId: string) {
