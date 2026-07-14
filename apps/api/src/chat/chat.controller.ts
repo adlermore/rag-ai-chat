@@ -57,6 +57,14 @@ export class ChatController {
     reply.raw.setHeader("Cache-Control", "no-cache, no-transform");
     reply.raw.setHeader("Connection", "keep-alive");
     reply.raw.setHeader("X-Accel-Buffering", "no");
+    // hijack обходит хуки Fastify (в т.ч. CORS) — ставим CORS-заголовки вручную,
+    // иначе браузер заблокирует чтение SSE-потока с другого origin.
+    const origin = reply.request.headers.origin;
+    if (origin) {
+      reply.raw.setHeader("Access-Control-Allow-Origin", origin);
+      reply.raw.setHeader("Access-Control-Allow-Credentials", "true");
+      reply.raw.setHeader("Vary", "Origin");
+    }
     reply.hijack(); // забираем сырой ответ у Fastify
 
     const send = (event: ChatStreamEvent) =>
