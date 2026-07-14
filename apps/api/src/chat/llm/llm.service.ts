@@ -1,7 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AnthropicProvider } from "./anthropic.provider";
-import type { LlmAnswerInput, LlmProvider } from "./llm.provider";
+import type {
+  LlmAnswerInput,
+  LlmCompletion,
+  LlmProvider,
+  LlmTurn,
+} from "./llm.provider";
 import { OpenAiProvider } from "./openai.provider";
 import { StubLlmProvider } from "./stub.provider";
 
@@ -39,7 +44,12 @@ export class LlmService {
     return this.provider.name;
   }
 
-  streamAnswer(input: LlmAnswerInput): AsyncIterable<string> {
-    return this.provider.streamAnswer(input);
+  complete(input: LlmAnswerInput): Promise<LlmCompletion> {
+    return this.provider.complete(input);
+  }
+
+  /** Переписывает follow-up вопрос в самостоятельный (best-effort). */
+  rewrite(question: string, history: LlmTurn[]): Promise<string> {
+    return this.provider.rewrite(question, history);
   }
 }

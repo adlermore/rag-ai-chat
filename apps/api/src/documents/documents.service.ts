@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { DocumentStatus, type DocumentType } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { IngestClient } from "../ingest/ingest.client";
+import { AnswerCacheService } from "../cache/answer-cache.service";
 
 interface RegisterInput {
   title: string;
@@ -16,6 +17,7 @@ export class DocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ingest: IngestClient,
+    private readonly cache: AnswerCacheService,
   ) {}
 
   /**
@@ -58,6 +60,8 @@ export class DocumentsService {
       this.logger.log(
         `Документ ${documentId} проиндексирован: ${result.chunkCount} чанков.`,
       );
+      // База знаний изменилась → закэшированные ответы могли устареть.
+      await this.cache.invalidateAll();
     } catch (e) {
       this.logger.error(`Ингестия ${documentId} упала: ${e}`);
       await this.prisma.document.update({

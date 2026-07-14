@@ -1,6 +1,10 @@
 /**
  * Абстракция LLM для чата. Провайдеры: openai, anthropic, stub.
- * Ответ отдаётся потоком токенов (для SSE в UI).
+ *
+ * Провайдеры возвращают ГОТОВЫЙ ответ (complete) с токен-метриками — оба API
+ * вызываются без стриминга, а «стрим» словами в SSE делает ChatService.
+ * Отдельно — rewrite(): переписывание follow-up вопроса в самостоятельный
+ * с учётом истории диалога (обязательный шаг пайплайна, docs/01-SPEC.md).
  */
 
 export interface LlmContextBlock {
@@ -21,15 +25,22 @@ export interface LlmAnswerInput {
   lowConfidence: boolean;
 }
 
+export interface LlmCompletion {
+  text: string;
+  tokensIn: number | null;
+  tokensOut: number | null;
+}
+
 export interface LlmProvider {
   readonly name: string;
-  streamAnswer(input: LlmAnswerInput): AsyncIterable<string>;
+  complete(input: LlmAnswerInput): Promise<LlmCompletion>;
+  /** Самостоятельная формулировка вопроса; при сбое возвращает исходный. */
+  rewrite(question: string, history: LlmTurn[]): Promise<string>;
 }
 
 /**
  * Системная инструкция (армянский): отвечать СТРОГО по контексту, ставить
- * цитаты ⟨n⟩, при отсутствии ответа — честно сообщать. Единый промпт для всех
- * реальных провайдеров (docs/01-SPEC.md §Guardrails).
+ * цитаты ⟨n⟩, при отсутствии ответа — честно сообщать (docs/01-SPEC.md).
  */
 export function buildSystemPrompt(): string {
   return [
@@ -49,4 +60,20 @@ export function buildUserPrompt(input: LlmAnswerInput): string {
     ? "\n\n(Ուշադրություն՝ համատեքստը թերի է, հնարավոր է պատասխանը ոչ լիարժեք լինի։)"
     : "";
   return `Համատեքստ՝\n${ctx}${note}\n\nՀարց՝ ${input.question}`;
+}
+
+/** Промпт переписывания follow-up вопроса в самостоятельный (армянский). */
+export function buildRewritePrompt(question: string, history: LlmTurn[]): string {
+  const dialog = history
+    .map((t) => `${t.role === "user" ? "Օգտատեր" : "Օգնական"}: ${t.content}`)
+    .join("\n");
+  return [
+    "Ստորև երկխոսություն է և օգտատիրոջ վերջին հարցը։ Վերաձևակերպիր վերջին",
+    "հարցը որպես ԻՆՔՆՈՒՐՈՒՅՆ, համատեքստից անկախ հարց հայերենով՝ պահպանելով",
+    "իմաստը։ Վերադարձրու ՄԻԱՅՆ վերաձևակերպված հարցը, առանց բացատրության։",
+    "",
+    `Երկխոսություն՝\n${dialog}`,
+    "",
+    `Վերջին հարց՝ ${question}`,
+  ].join("\n");
 }

@@ -4,6 +4,10 @@ import { Confidence, MessageRole } from "@prisma/client";
 import type { ChatStreamEvent, MessageSource as MessageSourceDto } from "@rag/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { IngestClient, type RetrievalHit } from "../ingest/ingest.client";
+import {
+  AnswerCacheService,
+  type CachedAnswer,
+} from "../cache/answer-cache.service";
 import { classifyConfidence, shouldCallLlm } from "./guardrail";
 import { LlmService } from "./llm/llm.service";
 
@@ -18,6 +22,7 @@ export class ChatService {
     private readonly prisma: PrismaService,
     private readonly ingest: IngestClient,
     private readonly llm: LlmService,
+    private readonly cache: AnswerCacheService,
     private readonly config: ConfigService,
   ) {}
 
@@ -78,8 +83,8 @@ export class ChatService {
 
   /**
    * Полный RAG-пайплайн одним потоком SSE-событий:
-   * retrieval → guardrail → (LLM) → сохранение message+sources.
-   * (Query rewrite и Redis-кэш — следующий инкремент; см. ROADMAP.)
+   * query rewrite → кэш → retrieval → guardrail → LLM → сохранение
+   * message + sources + токен-метрик. (Grounding-проверка — след. инкремент.)
    */
   async *streamAnswer(
     chatId: string,
@@ -88,9 +93,34 @@ export class ChatService {
   ): AsyncGenerator<ChatStreamEvent> {
     await this.assertOwnedChat(chatId, userId);
 
+    // Историю читаем ДО записи вопроса (для rewrite нужен прошлый контекст).
+    const history = await this.recentHistory(chatId);
+
     await this.prisma.message.create({
       data: { chatId, role: MessageRole.user, content },
     });
+
+    // Follow-up («а минимальная?») переписываем в самостоятельный вопрос —
+    // иначе retrieval ищет по обрывку. Первый вопрос чата — как есть.
+    let query = content;
+    if (history.length > 0) {
+      query = await this.llm.rewrite(content, history);
+      if (query !== content) {
+        this.logger.log(`rewrite: «${content}» → «${query}»`);
+      }
+    }
+
+    // Кэш: нормализованный переписанный вопрос → готовый ответ.
+    const cached = await this.cache.get(query);
+    if (cached) {
+      const saved = await this.persistAnswer(chatId, cached, { cached: true });
+      yield { type: "token", value: cached.content };
+      if (saved.sources.length) {
+        yield { type: "sources", sources: saved.sources };
+      }
+      yield { type: "done", messageId: saved.messageId, confidence: cached.confidence };
+      return;
+    }
 
     const topOut = this.config.get<number>("RERANK_TOP_OUT", 5);
     const low = this.config.get<number>("THRESHOLD_LOW", 0.35);
@@ -98,7 +128,7 @@ export class ChatService {
 
     let hits: RetrievalHit[] = [];
     try {
-      hits = await this.ingest.search(content, topOut);
+      hits = await this.ingest.search(query, topOut);
     } catch (e) {
       this.logger.error(`retrieval упал: ${e}`);
       yield { type: "error", message: "Որոնման ծառայությունը հասանելի չէ։" };
@@ -110,16 +140,17 @@ export class ChatService {
 
     // Отказ БЕЗ вызова LLM (score ниже нижнего порога).
     if (!shouldCallLlm(confidence)) {
-      const msg = await this.prisma.message.create({
-        data: {
-          chatId,
-          role: MessageRole.assistant,
-          content: REFUSAL_TEXT,
-          confidence: Confidence.refused,
-        },
-      });
+      const refusal: CachedAnswer = {
+        content: REFUSAL_TEXT,
+        confidence: "refused",
+        sources: [],
+        tokensIn: null,
+        tokensOut: null,
+      };
+      const saved = await this.persistAnswer(chatId, refusal, { cached: false });
+      await this.cache.set(query, refusal);
       yield { type: "token", value: REFUSAL_TEXT };
-      yield { type: "done", messageId: msg.id, confidence: "refused" };
+      yield { type: "done", messageId: saved.messageId, confidence: "refused" };
       return;
     }
 
@@ -129,34 +160,54 @@ export class ChatService {
       text: h.text,
     }));
 
-    const history = await this.recentHistory(chatId);
-
-    let answer = "";
+    let completion;
     try {
-      for await (const chunk of this.llm.streamAnswer({
-        question: content,
+      completion = await this.llm.complete({
+        question: query,
         contextBlocks,
         history,
         lowConfidence: confidence === Confidence.low,
-      })) {
-        answer += chunk;
-        yield { type: "token", value: chunk };
-      }
+      });
     } catch (e) {
       this.logger.error(`LLM упал: ${e}`);
       yield { type: "error", message: "Պատասխանի գեներացիան ձախողվեց։" };
       return;
     }
 
-    // Сохранение ответа + источников (только с валидным documentId в БД).
-    const saved = await this.persistAnswer(chatId, answer, confidence, hits);
+    // «Стрим» словами (провайдеры не стримят — ответ уже целиком у нас).
+    for (const word of completion.text.split(/(\s+)/)) {
+      if (word) yield { type: "token", value: word };
+    }
+
+    const answer: CachedAnswer = {
+      content: completion.text,
+      confidence: confidence === Confidence.high ? "high" : "low",
+      sources: this.hitsToSourceDtos(hits),
+      tokensIn: completion.tokensIn,
+      tokensOut: completion.tokensOut,
+    };
+    const saved = await this.persistAnswer(chatId, answer, { cached: false });
+    await this.cache.set(query, answer);
 
     yield { type: "sources", sources: saved.sources };
-    yield {
-      type: "done",
-      messageId: saved.messageId,
-      confidence: confidence === Confidence.high ? "high" : "low",
-    };
+    yield { type: "done", messageId: saved.messageId, confidence: answer.confidence };
+  }
+
+  /** DTO источников из retrieval-хитов (для кэша и сохранения). */
+  private hitsToSourceDtos(hits: RetrievalHit[]): MessageSourceDto[] {
+    return hits
+      .filter((h) => h.documentId)
+      .map((h) => ({
+        id: h.chunkId, // временный id; при сохранении заменяется на строку БД
+        documentId: h.documentId as string,
+        documentTitle: h.docTitle ?? "",
+        documentType: "pdf" as MessageSourceDto["documentType"], // уточняется из БД при сохранении
+        page: h.page,
+        sheet: h.sheet,
+        row: h.row,
+        chunkId: h.chunkId,
+        score: h.score,
+      }));
   }
 
   private async recentHistory(chatId: string) {
@@ -176,32 +227,39 @@ export class ChatService {
 
   private async persistAnswer(
     chatId: string,
-    answer: string,
-    confidence: Confidence,
-    hits: RetrievalHit[],
+    answer: CachedAnswer,
+    opts: { cached: boolean },
   ) {
     const message = await this.prisma.message.create({
-      data: { chatId, role: MessageRole.assistant, content: answer, confidence },
+      data: {
+        chatId,
+        role: MessageRole.assistant,
+        content: answer.content,
+        confidence: answer.confidence as Confidence,
+        cached: opts.cached,
+        tokensIn: answer.tokensIn,
+        tokensOut: answer.tokensOut,
+      },
     });
 
     // FK: оставляем источники только для существующих документов.
-    const docIds = [...new Set(hits.map((h) => h.documentId).filter(Boolean))] as string[];
+    const docIds = [...new Set(answer.sources.map((s) => s.documentId))];
     const existing = await this.prisma.document.findMany({
       where: { id: { in: docIds } },
       select: { id: true },
     });
     const validIds = new Set(existing.map((d) => d.id));
 
-    const sourceData = hits
-      .filter((h) => h.documentId && validIds.has(h.documentId))
-      .map((h) => ({
+    const sourceData = answer.sources
+      .filter((s) => validIds.has(s.documentId))
+      .map((s) => ({
         messageId: message.id,
-        documentId: h.documentId as string,
-        chunkId: h.chunkId,
-        page: h.page,
-        sheet: h.sheet,
-        row: h.row,
-        score: h.score,
+        documentId: s.documentId,
+        chunkId: s.chunkId,
+        page: s.page,
+        sheet: s.sheet,
+        row: s.row,
+        score: s.score,
       }));
     if (sourceData.length) {
       await this.prisma.messageSource.createMany({ data: sourceData });

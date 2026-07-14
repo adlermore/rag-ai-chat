@@ -1,19 +1,21 @@
-import type { LlmAnswerInput, LlmProvider } from "./llm.provider";
+import type {
+  LlmAnswerInput,
+  LlmCompletion,
+  LlmProvider,
+  LlmTurn,
+} from "./llm.provider";
 
 /**
  * Stub-провайдер: НЕ генерирует текст, а собирает черновой ответ из найденных
- * чанков (с цитатами ⟨n⟩). Позволяет проверить весь пайплайн (retrieval →
- * guardrail → источники → сохранение → UI) БЕЗ ключа LLM. При наличии ключа
- * заменяется на openai/anthropic (см. llm.factory).
+ * чанков (с цитатами ⟨n⟩). Позволяет проверить весь пайплайн БЕЗ ключа LLM.
  */
 export class StubLlmProvider implements LlmProvider {
   readonly name = "stub";
 
-  async *streamAnswer(input: LlmAnswerInput): AsyncIterable<string> {
+  async complete(input: LlmAnswerInput): Promise<LlmCompletion> {
     const preamble = input.lowConfidence
       ? "⚠️ Հնարավոր է պատասխանը ոչ լիարժեք լինի (թերի համատեքստ)։\n\n"
       : "";
-    // Черновой ответ: первое предложение каждого топ-чанка + цитата.
     const body = input.contextBlocks
       .slice(0, 3)
       .map((b) => {
@@ -23,10 +25,10 @@ export class StubLlmProvider implements LlmProvider {
       .join(" ");
     const note =
       "\n\n[Սա սևագիր պատասխան է առանց LLM-ի. Իրական պատասխանի համար ավելացրեք LLM բանալի (OPENAI_API_KEY կամ ANTHROPIC_API_KEY)։]";
+    return { text: preamble + body + note, tokensIn: null, tokensOut: null };
+  }
 
-    // Отдаём «потоком» словами, чтобы UI-стриминг был виден.
-    for (const word of (preamble + body + note).split(/(\s+)/)) {
-      yield word;
-    }
+  async rewrite(question: string, _history: LlmTurn[]): Promise<string> {
+    return question; // без LLM переписывание невозможно — pass-through
   }
 }
