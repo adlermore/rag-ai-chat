@@ -60,6 +60,72 @@ def _split_paragraphs(text: str) -> list[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
+# ── Markdown-таблицы: построчный чанкинг ──
+# Большая таблица (суточные по ~200 странам) в «пачечном» чанкинге давала чанки
+# с десятками строк — запрос по одной ячейке («օրապահիկ Մոսկվա») не поднимал
+# нужную строку в top-5 (выявлено верификацией Фазы 2). Решение как для Excel:
+# одна строка = один чанк, с шапкой и контекстом группы (docs/01-SPEC.md).
+
+_TABLE_LINE_RE = re.compile(r"^\s*\|.*\|\s*$")
+
+
+def _split_table_blocks(text: str) -> list[tuple[str, str]]:
+    """Разбивает текст на блоки ("prose"|"table", содержимое) в порядке документа."""
+    blocks: list[tuple[str, str]] = []
+    buf: list[str] = []
+    mode = "prose"
+    for line in text.splitlines():
+        line_mode = "table" if _TABLE_LINE_RE.match(line) else "prose"
+        if line_mode != mode and buf:
+            blocks.append((mode, "\n".join(buf)))
+            buf = []
+        mode = line_mode
+        buf.append(line)
+    if buf:
+        blocks.append((mode, "\n".join(buf)))
+    return blocks
+
+
+def _parse_table_rows(table_text: str) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for line in table_text.splitlines():
+        line = line.strip().strip("|")
+        cells = [c.strip() for c in line.split("|")]
+        if any(cells):
+            rows.append(cells)
+    return rows
+
+
+def _table_row_texts(rows: list[list[str]]) -> list[str]:
+    """Строки таблицы → самодостаточные тексты «шапка: значение | …».
+
+    Строка со значениями только в первых двух колонках трактуется как заголовок
+    группы (напр., страна перед списком городов) и добавляется префиксом к
+    последующим строкам данных — иначе строка города теряет страну.
+    """
+    if not rows:
+        return []
+    header = rows[0]
+    group_ctx: str | None = None
+    out: list[str] = []
+    for cells in rows[1:]:
+        nonempty = [i for i, c in enumerate(cells) if c]
+        if not nonempty:
+            continue
+        if all(i < 2 for i in nonempty) and len(cells) > 2:
+            group_ctx = " ".join(cells[i] for i in nonempty)
+            continue
+        pairs = []
+        for i in nonempty:
+            label = header[i] if i < len(header) and header[i] else ""
+            pairs.append(f"{label}: {cells[i]}" if label else cells[i])
+        text = " | ".join(pairs)
+        if group_ctx:
+            text = f"{group_ctx} | {text}"
+        out.append(text)
+    return out
+
+
 def _hard_slice(text: str, target: int) -> list[str]:
     out: list[str] = []
     buf: list[str] = []
@@ -112,9 +178,23 @@ def chunk_text(
     target = cfg.chunk_target_tokens
     overlap_tokens = int(target * cfg.chunk_overlap_ratio)
 
-    units: list[str] = []
-    for para in _split_paragraphs(_clean_markdown(text)):
-        units.extend(_segments(para, target))
+    # Блоки в порядке документа: проза пакуется до target; большая таблица
+    # (не влезающая в один чанк) режется построчно — чанк на строку.
+    units: list[str] = []          # прозаические сегменты (пакуются)
+    row_chunks_after: dict[int, list[str]] = {}  # позиция → готовые строки-чанки
+    for kind, block in _split_table_blocks(_clean_markdown(text)):
+        if kind == "table":
+            rows = _parse_table_rows(block)
+            flat = " ".join(" ".join(c for c in r if c) for r in rows)
+            if count_tokens(flat) <= target:
+                units.append(flat)  # маленькая таблица — обычный сегмент
+            else:
+                row_chunks_after.setdefault(len(units), []).extend(
+                    _table_row_texts(rows)
+                )
+        else:
+            for para in _split_paragraphs(block):
+                units.extend(_segments(para, target))
 
     chunks: list[Chunk] = []
     buf: list[str] = []
@@ -145,7 +225,30 @@ def chunk_text(
             buf = []
             buf_tokens = 0
 
-    for unit in units:
+    def emit_row(row_text: str) -> None:
+        chunks.append(
+            Chunk(
+                id=str(uuid.uuid4()),
+                document_id=document_id,
+                document_version=document_version,
+                doc_type=doc_type,
+                text=row_text,
+                page=page,
+                heading_path=heading_path,
+            )
+        )
+
+    def emit_table_rows(pos: int) -> None:
+        if pos not in row_chunks_after:
+            return
+        nonlocal buf, buf_tokens
+        flush()
+        buf, buf_tokens = [], 0  # без overlap через границу таблицы
+        for row_text in row_chunks_after[pos]:
+            emit_row(row_text)
+
+    for i, unit in enumerate(units):
+        emit_table_rows(i)
         utok = count_tokens(unit)
         if buf and buf_tokens + utok > target:
             flush()
@@ -153,6 +256,7 @@ def chunk_text(
         buf_tokens += utok
 
     flush()
+    emit_table_rows(len(units))
     return chunks
 
 
