@@ -43,9 +43,11 @@ import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
     HealthModule,
   ],
   providers: [
-    // Порядок важен: сначала rate limit, затем аутентификация, затем RBAC.
-    { provide: APP_GUARD, useClass: UserThrottlerGuard },
+    // Порядок важен: СНАЧАЛА аутентификация (кладёт req.user), потом rate limit —
+    // иначе throttler трекает по IP, и офис за NAT делит 20 req/мин на всех
+    // (найдено нагрузочным smoke), затем RBAC.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: UserThrottlerGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],
