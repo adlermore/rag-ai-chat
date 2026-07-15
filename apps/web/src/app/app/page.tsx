@@ -182,7 +182,6 @@ function ChatWorkspace() {
             </Button>
           </div>
         </div>
-        <PoweredBySteply center className="mt-2.5" />
       </div>
     </>
   );
@@ -309,9 +308,12 @@ function ChatWorkspace() {
           )}
         </div>
 
-        <div className="px-4 pb-4 pt-1">
+        <div className="px-4 pb-3 pt-1">
           <div className="mx-auto max-w-3xl">
             <Composer disabled={busy} onSend={send} />
+            <div className="mt-2 flex justify-center">
+              <PoweredBySteply />
+            </div>
           </div>
         </div>
       </div>

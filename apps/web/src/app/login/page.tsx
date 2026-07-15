@@ -145,7 +145,7 @@ export default function LoginPage() {
         </CardContent>
       </Card>
 
-      <PoweredBySteply center className="mt-5" />
+      <PoweredBySteply className="mt-5" />
       </div>
     </main>
   );
