@@ -9,6 +9,7 @@ import {
   type CachedAnswer,
 } from "../cache/answer-cache.service";
 import { classifyConfidence, shouldCallLlm } from "./guardrail";
+import { detectSmallTalk } from "./smalltalk";
 import { LlmService } from "./llm/llm.service";
 
 const REFUSAL_TEXT =
@@ -100,6 +101,25 @@ export class ChatService {
     await this.prisma.message.create({
       data: { chatId, role: MessageRole.user, content },
     });
+
+    // Разговорная реплика (приветствие/благодарность/прощание/«что умеешь») —
+    // это НЕ вопрос к базе. Отвечаем сразу, без retrieval и без LLM (0 токенов,
+    // мгновенно). Фактологический guardrail не затрагивается — предметные
+    // вопросы по-прежнему идут ниже через поиск с порогами.
+    const smalltalk = detectSmallTalk(content);
+    if (smalltalk) {
+      const reply: CachedAnswer = {
+        content: smalltalk.reply,
+        confidence: "high",
+        sources: [],
+        tokensIn: null,
+        tokensOut: null,
+      };
+      const saved = await this.persistAnswer(chatId, reply, { cached: false });
+      yield { type: "token", value: smalltalk.reply };
+      yield { type: "done", messageId: saved.messageId, confidence: "high" };
+      return;
+    }
 
     // Follow-up («а минимальная?») переписываем в самостоятельный вопрос —
     // иначе retrieval ищет по обрывку. Первый вопрос чата — как есть.

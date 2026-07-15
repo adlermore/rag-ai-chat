@@ -271,6 +271,10 @@ export function MessageBubble({
   }
 
   const thinking = streaming && message.content.trim().length === 0;
+  // Разговорная реплика (приветствие и т.п.): нет источников и это не отказ —
+  // рендерим нейтрально, без цветной полосы уверенности (это не оценка ответа).
+  const conversational =
+    !streaming && confidence !== "refused" && sources.length === 0;
 
   return (
     <div className="flex justify-start">
@@ -278,10 +282,14 @@ export function MessageBubble({
         className={cn(
           "max-w-[85%] rounded-2xl rounded-bl-md border border-border bg-card px-4 py-3 shadow-[0_1px_2px_rgb(0_0_0/0.04)]",
         )}
-        style={{
-          borderInlineStartWidth: 3,
-          borderInlineStartColor: CONFIDENCE_VAR[confidence],
-        }}
+        style={
+          conversational
+            ? undefined
+            : {
+                borderInlineStartWidth: 3,
+                borderInlineStartColor: CONFIDENCE_VAR[confidence],
+              }
+        }
       >
         {confidence === "low" && !streaming && (
           <p
