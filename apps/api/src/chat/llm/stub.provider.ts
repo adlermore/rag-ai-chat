@@ -28,6 +28,16 @@ export class StubLlmProvider implements LlmProvider {
     return { text: preamble + body + note, tokensIn: null, tokensOut: null };
   }
 
+  async *streamCompletion(
+    input: LlmAnswerInput,
+  ): AsyncGenerator<string, LlmCompletion, void> {
+    const completion = await this.complete(input);
+    for (const word of completion.text.split(/(\s+)/)) {
+      if (word) yield word;
+    }
+    return completion;
+  }
+
   async rewrite(question: string, _history: LlmTurn[]): Promise<string> {
     return question; // без LLM переписывание невозможно — pass-through
   }

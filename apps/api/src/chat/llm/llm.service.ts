@@ -48,6 +48,13 @@ export class LlmService {
     return this.provider.complete(input);
   }
 
+  /** Настоящий стриминг: yield — дельты текста, return — итог с usage. */
+  streamCompletion(
+    input: LlmAnswerInput,
+  ): AsyncGenerator<string, LlmCompletion, void> {
+    return this.provider.streamCompletion(input);
+  }
+
   /** Переписывает follow-up вопрос в самостоятельный (best-effort). */
   rewrite(question: string, history: LlmTurn[]): Promise<string> {
     return this.provider.rewrite(question, history);

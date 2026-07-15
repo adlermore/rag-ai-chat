@@ -161,23 +161,28 @@ export class ChatService {
       text: h.text,
     }));
 
+    // НАСТОЯЩИЙ стриминг: дельты уходят пользователю по мере генерации LLM
+    // (TTFT — приоритет проекта), итог генератора несёт полный текст + usage.
     let completion;
     try {
-      completion = await this.llm.complete({
+      const gen = this.llm.streamCompletion({
         question: query,
         contextBlocks,
         history,
         lowConfidence: confidence === Confidence.low,
       });
+      for (;;) {
+        const r = await gen.next();
+        if (r.done) {
+          completion = r.value;
+          break;
+        }
+        yield { type: "token", value: r.value };
+      }
     } catch (e) {
       this.logger.error(`LLM упал: ${e}`);
       yield { type: "error", message: "Պատասխանի գեներացիան ձախողվեց։" };
       return;
-    }
-
-    // «Стрим» словами (провайдеры не стримят — ответ уже целиком у нас).
-    for (const word of completion.text.split(/(\s+)/)) {
-      if (word) yield { type: "token", value: word };
     }
 
     const answer: CachedAnswer = {

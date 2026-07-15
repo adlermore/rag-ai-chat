@@ -34,8 +34,45 @@ export interface LlmCompletion {
 export interface LlmProvider {
   readonly name: string;
   complete(input: LlmAnswerInput): Promise<LlmCompletion>;
+  /**
+   * НАСТОЯЩИЙ стриминг ответа: yield — дельты текста по мере генерации
+   * (первый токен пользователю через секунды), return — итог с usage.
+   * Приоритет проекта — скорость ответов (TTFT).
+   */
+  streamCompletion(
+    input: LlmAnswerInput,
+  ): AsyncGenerator<string, LlmCompletion, void>;
   /** Самостоятельная формулировка вопроса; при сбое возвращает исходный. */
   rewrite(question: string, history: LlmTurn[]): Promise<string>;
+}
+
+/** Разбор SSE-потока (Anthropic/OpenAI): выдаёт JSON-объекты data-строк. */
+export async function* sseJsonEvents(
+  body: ReadableStream<Uint8Array>,
+): AsyncGenerator<unknown> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const parts = buf.split("\n\n");
+    buf = parts.pop() ?? "";
+    for (const part of parts) {
+      for (const line of part.split("\n")) {
+        const t = line.trim();
+        if (!t.startsWith("data:")) continue;
+        const payload = t.slice(5).trim();
+        if (!payload || payload === "[DONE]") continue;
+        try {
+          yield JSON.parse(payload);
+        } catch {
+          /* пропускаем битые фрагменты */
+        }
+      }
+    }
+  }
 }
 
 /**
