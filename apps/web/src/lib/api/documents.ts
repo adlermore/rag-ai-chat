@@ -51,3 +51,27 @@ export const documentsApi = {
     return data as AdminDocument;
   },
 };
+
+/** Открывает оригинал документа: PDF — в новой вкладке, прочее — скачиванием.
+ *  Файл за auth-заголовком, поэтому качаем blob и открываем object-URL. */
+export async function openDocumentFile(
+  documentId: string,
+  title: string,
+  type: string,
+): Promise<void> {
+  const res = await fetch(`${API_URL}/documents/${documentId}/file`, {
+    headers: { Authorization: `Bearer ${tokenStorage.access ?? ""}` },
+  });
+  if (!res.ok) throw new Error(`file ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  if (type === "pdf") {
+    window.open(url, "_blank", "noopener");
+  } else {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title}.${type}`;
+    a.click();
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}

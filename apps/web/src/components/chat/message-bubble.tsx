@@ -1,8 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import type { MessageSource } from "@rag/shared";
-import { cn } from "@rag/ui";
-import { FileSpreadsheet, FileText, SearchX } from "lucide-react";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  cn,
+} from "@rag/ui";
+import { ExternalLink, FileSpreadsheet, FileText, SearchX } from "lucide-react";
+import { openDocumentFile } from "@/lib/api/documents";
 import { t } from "@/lib/i18n";
 import { MarkdownAnswer } from "./markdown";
 import type { ChatMessage, Confidence } from "@/lib/api/chat";
@@ -13,36 +24,114 @@ const CONFIDENCE_VAR: Record<Confidence, string> = {
   refused: "var(--confidence-none)",
 };
 
-function SourceCard({
-  source,
-  marker,
-  messageId,
-}: {
-  source: MessageSource;
-  marker: number;
-  messageId: string;
-}) {
+function sourceLocation(source: MessageSource): string[] {
   const loc: string[] = [];
   if (source.page != null) loc.push(`${t("chat.page")} ${source.page}`);
   if (source.sheet) loc.push(`${t("chat.sheet")} ${source.sheet}`);
   if (source.row != null) loc.push(`${t("chat.row")} ${source.row}`);
+  return loc;
+}
+
+function SourceCard({
+  source,
+  marker,
+  messageId,
+  onSelect,
+}: {
+  source: MessageSource;
+  marker: number;
+  messageId: string;
+  onSelect: (s: MessageSource) => void;
+}) {
+  const loc = sourceLocation(source);
   const Icon = source.documentType === "xlsx" ? FileSpreadsheet : FileText;
   return (
-    <li
-      id={`src-${messageId}-${marker}`}
-      className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5 transition-colors hover:border-primary/40 hover:bg-muted/60"
-    >
-      <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md border border-primary/40 px-1 text-[11px] font-medium tabular-nums text-primary">
-        {marker}
-      </span>
-      <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 truncate text-[13px]">
-        <span className="font-medium text-foreground">{source.documentTitle}</span>
-        {loc.length > 0 && (
-          <span className="text-muted-foreground"> · {loc.join(", ")}</span>
+    <li id={`src-${messageId}-${marker}`}>
+      <button
+        type="button"
+        onClick={() => onSelect(source)}
+        className={cn(
+          "flex w-full min-w-0 items-center gap-2 rounded-lg border border-border bg-background",
+          "px-2.5 py-1.5 text-start transition-colors hover:border-primary/40 hover:bg-muted/60",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         )}
-      </span>
+      >
+        <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md border border-primary/40 px-1 text-[11px] font-medium tabular-nums text-primary">
+          {marker}
+        </span>
+        <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate text-[13px]">
+          <span className="font-medium text-foreground">{source.documentTitle}</span>
+          {loc.length > 0 && (
+            <span className="text-muted-foreground"> · {loc.join(", ")}</span>
+          )}
+        </span>
+        <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+      </button>
     </li>
+  );
+}
+
+/** Диалог источника: фрагмент чанка + открытие оригинала документа. */
+function SourceDialog({
+  source,
+  onClose,
+}: {
+  source: MessageSource | null;
+  onClose: () => void;
+}) {
+  const [opening, setOpening] = useState(false);
+  const loc = source ? sourceLocation(source) : [];
+  return (
+    <Dialog open={source !== null} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {source?.documentType === "xlsx" ? (
+              <FileSpreadsheet className="size-4 text-primary" />
+            ) : (
+              <FileText className="size-4 text-primary" />
+            )}
+            {source?.documentTitle}
+          </DialogTitle>
+          {loc.length > 0 && <DialogDescription>{loc.join(" · ")}</DialogDescription>}
+        </DialogHeader>
+
+        {source?.snippet && (
+          <div>
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              {t("chat.fragment")}
+            </p>
+            <blockquote className="rounded-lg border-s-2 border-primary/50 bg-muted/50 px-3 py-2 text-[13px] leading-relaxed text-foreground">
+              {source.snippet}…
+            </blockquote>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button
+            className="gap-2"
+            disabled={opening || !source}
+            onClick={async () => {
+              if (!source) return;
+              setOpening(true);
+              try {
+                await openDocumentFile(
+                  source.documentId,
+                  source.documentTitle,
+                  source.documentType,
+                );
+              } finally {
+                setOpening(false);
+              }
+            }}
+          >
+            <ExternalLink className="size-4" />
+            {opening ? t("chat.opening") : t("chat.openDocument")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -70,6 +159,9 @@ export function MessageBubble({
   message: ChatMessage;
   streaming?: boolean;
 }) {
+  // Хук — до любых ранних return (правила хуков React).
+  const [selectedSource, setSelectedSource] = useState<MessageSource | null>(null);
+
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
@@ -153,12 +245,15 @@ export function MessageBubble({
                   source={s}
                   marker={i + 1}
                   messageId={message.id}
+                  onSelect={setSelectedSource}
                 />
               ))}
             </ul>
           </div>
         )}
       </div>
+
+      <SourceDialog source={selectedSource} onClose={() => setSelectedSource(null)} />
     </div>
   );
 }
