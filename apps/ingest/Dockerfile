@@ -4,9 +4,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# torch — CPU-сборка (иначе pip на linux тянет многогигабайтные CUDA-колёса;
-# прод — сервер без GPU, см. docs/02-ARCHITECTURE.md).
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+# torch + torchvision — CPU-сборки ИЗ ОДНОГО индекса (иначе pip на linux тянет
+# многогигабайтные CUDA-колёса, а разнородные сборки бинарно несовместимы:
+# Docling падал на PDF с «operator torchvision::nms does not exist»).
+# Прод — сервер без GPU, см. docs/02-ARCHITECTURE.md.
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt

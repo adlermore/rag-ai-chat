@@ -1,5 +1,15 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { Agent, fetch as undiciFetch } from "undici";
+
+// Ингестия большого PDF занимает десятки минут (CPU) — дефолтные таймауты
+// undici (~5 мин на заголовки) роняли fetch, документ помечался failed, а
+// ingest продолжал работать «осиротевшим» (найдено на Трудовом кодексе).
+// До перевода на BullMQ (v1.1) держим соединение без лимитов.
+const LONG_RUNNING_AGENT = new Agent({
+  headersTimeout: 0,
+  bodyTimeout: 0,
+});
 
 export interface IngestResult {
   documentId: string;
@@ -34,7 +44,9 @@ export class IngestClient {
     version: number;
     title: string;
   }): Promise<IngestResult> {
-    const resp = await fetch(`${this.baseUrl}/ingest-path`, {
+    // fetch из npm-undici: встроенному fetch нельзя передать Agent из npm-копии
+    // (разные внутренние инстансы undici → мгновенный «fetch failed»).
+    const resp = await undiciFetch(`${this.baseUrl}/ingest-path`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -43,6 +55,7 @@ export class IngestClient {
         version: params.version,
         title: params.title,
       }),
+      dispatcher: LONG_RUNNING_AGENT,
     });
     if (!resp.ok) {
       throw new Error(`ingest /ingest-path ${resp.status}: ${await resp.text()}`);
