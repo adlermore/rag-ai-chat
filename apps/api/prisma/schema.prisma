@@ -128,6 +128,8 @@ model MessageSource {
   row        Int?
   chunkId    String  @map("chunk_id")
   score      Float
+  // Первые ~240 символов чанка — превью в HoverCard цитаты (дизайн-система).
+  snippet    String?
 
   message  Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
   document Document @relation(fields: [documentId], references: [id])

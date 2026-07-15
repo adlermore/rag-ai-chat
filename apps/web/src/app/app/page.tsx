@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MessageSource } from "@rag/shared";
 import { Button, cn } from "@rag/ui";
-import { LogOut, MessageSquarePlus, Plus, Sparkles } from "lucide-react";
+import { LogOut, Menu, Plus, Sparkles, X } from "lucide-react";
 import { RequireAuth } from "@/components/auth/require-auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth/context";
@@ -28,6 +28,7 @@ function ChatWorkspace() {
   const [streamContent, setStreamContent] = useState<string | null>(null);
   const [streamSources, setStreamSources] = useState<MessageSource[]>([]);
   const [busy, setBusy] = useState(false);
+  const [navOpen, setNavOpen] = useState(false); // мобильный сайдбар (Sheet)
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,6 +45,7 @@ function ChatWorkspace() {
   const selectChat = useCallback(async (id: string) => {
     setActiveId(id);
     setStreamContent(null);
+    setNavOpen(false);
     try {
       setMessages(await chatApi.messages(id));
     } catch {
@@ -55,6 +57,7 @@ function ChatWorkspace() {
     setActiveId(null);
     setMessages([]);
     setStreamContent(null);
+    setNavOpen(false);
   }, []);
 
   const send = useCallback(
@@ -117,68 +120,104 @@ function ChatWorkspace() {
 
   const showEmpty = messages.length === 0 && streamContent === null;
 
-  return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar: бренд + история чатов (мобильный Sheet — след. инкремент) */}
-      <aside className="hidden w-72 shrink-0 flex-col border-e border-border bg-card md:flex">
-        <div className="flex items-center gap-2.5 px-4 pb-4 pt-5">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-            <Sparkles className="size-4 text-primary" />
-          </span>
-          <span className="font-display text-[15px] font-semibold leading-tight text-foreground">
-            {t("app.name")}
-          </span>
-        </div>
+  // Содержимое сайдбара — общее для desktop-колонки и мобильной панели.
+  const sidebarContent = (
+    <>
+      <div className="flex items-center gap-2.5 px-4 pb-4 pt-5">
+        <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+          <Sparkles className="size-4 text-primary" />
+        </span>
+        <span className="font-display text-[15px] font-semibold leading-tight text-foreground">
+          {t("app.name")}
+        </span>
+      </div>
 
-        <div className="px-3 pb-2">
-          <Button variant="outline" className="w-full justify-start gap-2" onClick={newChat}>
-            <Plus className="size-4 text-primary" />
-            {t("chat.newChat")}
-          </Button>
-        </div>
+      <div className="px-3 pb-2">
+        <Button variant="outline" className="w-full justify-start gap-2" onClick={newChat}>
+          <Plus className="size-4 text-primary" />
+          {t("chat.newChat")}
+        </Button>
+      </div>
 
-        {chats.length > 0 && (
-          <p className="px-5 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            {t("chat.historyTitle")}
-          </p>
-        )}
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-3">
-          {chats.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => selectChat(c.id)}
-              className={cn(
-                "block w-full truncate rounded-lg px-2.5 py-2 text-start text-[13px] leading-5 transition-colors",
-                c.id === activeId
-                  ? "bg-muted font-medium text-foreground"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-              )}
+      {chats.length > 0 && (
+        <p className="px-5 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          {t("chat.historyTitle")}
+        </p>
+      )}
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-3">
+        {chats.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => selectChat(c.id)}
+            className={cn(
+              "block w-full truncate rounded-lg px-2.5 py-2 text-start text-[13px] leading-5 transition-colors",
+              c.id === activeId
+                ? "bg-muted font-medium text-foreground"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+            )}
+          >
+            {c.title}
+          </button>
+        ))}
+      </nav>
+
+      <div className="border-t border-border px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="min-w-0 truncate text-[12px] text-muted-foreground" dir="ltr">
+            {user?.email}
+          </span>
+          <div className="flex shrink-0 items-center gap-1">
+            <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={logout}
+              aria-label={t("auth.logout")}
+              title={t("auth.logout")}
             >
-              {c.title}
-            </button>
-          ))}
-        </nav>
-
-        <div className="border-t border-border px-4 py-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className="min-w-0 truncate text-[12px] text-muted-foreground" dir="ltr">
-              {user?.email}
-            </span>
-            <div className="flex shrink-0 items-center gap-1">
-              <ThemeToggle />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={logout}
-                aria-label={t("auth.logout")}
-                title={t("auth.logout")}
-              >
-                <LogOut className="size-4" />
-              </Button>
-            </div>
+              <LogOut className="size-4" />
+            </Button>
           </div>
         </div>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="flex h-screen bg-background">
+      {/* Desktop-сайдбар */}
+      <aside className="hidden w-72 shrink-0 flex-col border-e border-border bg-card md:flex">
+        {sidebarContent}
+      </aside>
+
+      {/* Мобильный сайдбар (Sheet): оверлей + выезжающая панель */}
+      <div
+        className={cn(
+          "fixed inset-0 z-40 bg-black/40 transition-opacity md:hidden",
+          navOpen ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        aria-hidden="true"
+        onClick={() => setNavOpen(false)}
+      />
+      <aside
+        className={cn(
+          "fixed inset-y-0 start-0 z-50 flex w-72 flex-col border-e border-border bg-card",
+          "transition-transform duration-200 md:hidden",
+          navOpen ? "translate-x-0" : "-translate-x-full rtl:translate-x-full",
+        )}
+        aria-hidden={!navOpen}
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute end-2 top-4"
+          onClick={() => setNavOpen(false)}
+          aria-label={t("common.close")}
+        >
+          <X className="size-4" />
+        </Button>
+        {sidebarContent}
       </aside>
 
       {/* Основная область */}
@@ -186,6 +225,14 @@ function ChatWorkspace() {
         {/* Мобильный хедер (на десктопе всё в сайдбаре) */}
         <header className="flex items-center justify-between border-b border-border px-4 py-2.5 md:hidden">
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setNavOpen(true)}
+              aria-label={t("chat.historyTitle")}
+            >
+              <Menu className="size-4" />
+            </Button>
             <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
               <Sparkles className="size-3.5 text-primary" />
             </span>
@@ -193,20 +240,14 @@ function ChatWorkspace() {
               {t("app.name")}
             </span>
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={newChat}
-              aria-label={t("chat.newChat")}
-            >
-              <MessageSquarePlus className="size-4" />
-            </Button>
-            <ThemeToggle />
-            <Button variant="ghost" size="icon" onClick={logout} aria-label={t("auth.logout")}>
-              <LogOut className="size-4" />
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={newChat}
+            aria-label={t("chat.newChat")}
+          >
+            <Plus className="size-4" />
+          </Button>
         </header>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
@@ -236,7 +277,7 @@ function ChatWorkspace() {
                         "disabled:opacity-60",
                       )}
                     >
-                      <MessageSquarePlus className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+                      <Sparkles className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
                       {t(key)}
                     </button>
                   ))}

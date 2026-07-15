@@ -58,6 +58,8 @@ export interface MessageSource {
   row: number | null;
   chunkId: string;
   score: number;
+  /** Первые ~240 символов чанка — превью в HoverCard цитаты. */
+  snippet: string | null;
 }
 
 export interface Message {

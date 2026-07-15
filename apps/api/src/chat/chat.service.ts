@@ -69,6 +69,7 @@ export class ChatService {
         row: s.row,
         chunkId: s.chunkId,
         score: s.score,
+        snippet: s.snippet,
       })),
     }));
   }
@@ -207,6 +208,7 @@ export class ChatService {
         row: h.row,
         chunkId: h.chunkId,
         score: h.score,
+        snippet: h.text ? h.text.slice(0, 240) : null,
       }));
   }
 
@@ -260,6 +262,7 @@ export class ChatService {
         sheet: s.sheet,
         row: s.row,
         score: s.score,
+        snippet: s.snippet,
       }));
     if (sourceData.length) {
       await this.prisma.messageSource.createMany({ data: sourceData });
@@ -279,6 +282,7 @@ export class ChatService {
       row: s.row,
       chunkId: s.chunkId,
       score: s.score,
+      snippet: s.snippet,
     }));
     return { messageId: message.id, sources };
   }
