@@ -18,9 +18,10 @@ import {
   TableHeader,
   TableRow,
 } from "@rag/ui";
-import { FileText, RotateCw, Trash2 } from "lucide-react";
+import { Eye, FileSpreadsheet, FileText, RotateCw, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { UploadDocumentDialog } from "@/components/admin/upload-document-dialog";
+import { DocumentPreviewDialog } from "@/components/admin/document-preview-dialog";
 import { documentsApi, type AdminDocument, type DocStatus } from "@/lib/api/documents";
 import { t } from "@/lib/i18n";
 
@@ -87,6 +88,7 @@ export default function DocumentsPage() {
   const [docs, setDocs] = useState<AdminDocument[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AdminDocument | null>(null);
+  const [preview, setPreview] = useState<AdminDocument | null>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setState("loading");
@@ -161,8 +163,20 @@ export default function DocumentsPage() {
             <TableBody>
               {docs.map((d) => (
                 <TableRow key={d.id}>
-                  <TableCell className="max-w-[360px] truncate font-medium">
-                    {d.title}
+                  <TableCell className="max-w-[360px]">
+                    <button
+                      type="button"
+                      onClick={() => setPreview(d)}
+                      title={t("docs.preview")}
+                      className="flex min-w-0 items-center gap-2 rounded text-start font-medium transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {d.type === "xlsx" ? (
+                        <FileSpreadsheet className="size-4 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <FileText className="size-4 shrink-0 text-muted-foreground" />
+                      )}
+                      <span className="truncate hover:underline">{d.title}</span>
+                    </button>
                   </TableCell>
                   <TableCell>
                     <span className="font-mono text-xs uppercase text-muted-foreground">
@@ -180,6 +194,15 @@ export default function DocumentsPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={t("docs.preview")}
+                        aria-label={t("docs.preview")}
+                        onClick={() => setPreview(d)}
+                      >
+                        <Eye className="size-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -209,6 +232,9 @@ export default function DocumentsPage() {
           </Table>
         ) : null}
       </div>
+
+      {/* Просмотр оригинала документа (PDF — встроенный вьювер) */}
+      <DocumentPreviewDialog doc={preview} onClose={() => setPreview(null)} />
 
       {/* Подтверждение удаления: предупреждение об инвалидации кэша и источников */}
       <Dialog
