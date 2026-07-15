@@ -163,23 +163,22 @@ function ChatWorkspace() {
         ))}
       </nav>
 
-      <div className="border-t border-border px-4 py-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="min-w-0 truncate text-[12px] text-muted-foreground" dir="ltr">
-            {user?.email}
-          </span>
-          <div className="flex shrink-0 items-center gap-1">
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={logout}
-              aria-label={t("auth.logout")}
-              title={t("auth.logout")}
-            >
-              <LogOut className="size-4" />
-            </Button>
-          </div>
+      {/* h-14 — совпадает по высоте с футером под композером (симметричная нижняя полоса) */}
+      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-t border-border px-4">
+        <span className="min-w-0 truncate text-[12px] text-muted-foreground" dir="ltr">
+          {user?.email}
+        </span>
+        <div className="flex shrink-0 items-center gap-1">
+          <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={logout}
+            aria-label={t("auth.logout")}
+            title={t("auth.logout")}
+          >
+            <LogOut className="size-4" />
+          </Button>
         </div>
       </div>
     </>
@@ -312,8 +311,8 @@ function ChatWorkspace() {
           </div>
         </div>
 
-        {/* Отдельная полоса-футер (bg-card): демо + атрибуция разработчика */}
-        <footer className="flex shrink-0 items-center justify-center gap-2 border-t border-border bg-card px-4 py-2.5">
+        {/* Полоса-футер (bg-card), h-14: демо слева, атрибуция Steply справа */}
+        <footer className="flex h-14 shrink-0 items-center justify-between gap-2 border-t border-border bg-card px-4">
           <DemoBadge />
           <PoweredBySteply />
         </footer>
