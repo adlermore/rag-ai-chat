@@ -1,14 +1,17 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
   FileText,
-  LogOut,
   ListChecks,
+  LogOut,
+  Menu,
   ScrollText,
   Users,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { Button, cn } from "@rag/ui";
@@ -30,12 +33,12 @@ const NAV: NavItem[] = [
   { href: "/admin/audit", labelKey: "nav.audit", icon: ScrollText },
 ];
 
-export function AdminSidebar() {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-card">
+    <>
       <div className="border-b border-border p-4">
         <p className="font-display text-lg font-bold text-foreground">
           {t("app.name")}
@@ -51,6 +54,7 @@ export function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -83,6 +87,72 @@ export function AdminSidebar() {
           {t("auth.logout")}
         </Button>
       </div>
-    </aside>
+    </>
+  );
+}
+
+/**
+ * Оболочка админки: постоянный сайдбар на ≥md, на мобиле — хедер с гамбургером
+ * и выезжающая панель (admin — desktop-first, но должен быть работоспособен
+ * с телефона; docs/03-DESIGN-SYSTEM.md §Мобильная версия).
+ */
+export function AdminShell({ children }: { children: ReactNode }) {
+  const [navOpen, setNavOpen] = useState(false);
+
+  return (
+    <div className="flex min-h-screen">
+      {/* Desktop-сайдбар */}
+      <aside className="hidden w-64 shrink-0 flex-col border-e border-border bg-card md:flex">
+        <SidebarContent />
+      </aside>
+
+      {/* Мобильная выезжающая панель */}
+      <div
+        className={cn(
+          "fixed inset-0 z-40 bg-black/40 transition-opacity md:hidden",
+          navOpen ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        aria-hidden="true"
+        onClick={() => setNavOpen(false)}
+      />
+      <aside
+        className={cn(
+          "fixed inset-y-0 start-0 z-50 flex w-64 flex-col border-e border-border bg-card",
+          "transition-transform duration-200 md:hidden",
+          navOpen ? "translate-x-0" : "-translate-x-full rtl:translate-x-full",
+        )}
+        aria-hidden={!navOpen}
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute end-2 top-3"
+          onClick={() => setNavOpen(false)}
+          aria-label={t("common.close")}
+        >
+          <X className="size-4" />
+        </Button>
+        <SidebarContent onNavigate={() => setNavOpen(false)} />
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Мобильный хедер */}
+        <header className="flex items-center gap-2 border-b border-border px-3 py-2.5 md:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setNavOpen(true)}
+            aria-label={t("admin.panelTitle")}
+          >
+            <Menu className="size-4" />
+          </Button>
+          <span className="font-display text-sm font-semibold text-foreground">
+            {t("app.name")}
+          </span>
+        </header>
+
+        <main className="min-w-0 flex-1 overflow-x-hidden">{children}</main>
+      </div>
+    </div>
   );
 }
