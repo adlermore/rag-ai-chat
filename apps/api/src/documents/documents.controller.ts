@@ -15,6 +15,7 @@ import {
   Query,
   Req,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import type { FastifyRequest } from "fastify";
 import "@fastify/multipart"; // типы req.file() (declaration merging)
 import {
@@ -38,6 +39,7 @@ export class DocumentsController {
   constructor(
     private readonly documents: DocumentsService,
     private readonly audit: AuditService,
+    private readonly config: ConfigService,
   ) {}
 
   @Get()
@@ -106,7 +108,10 @@ export class DocumentsController {
       throw new BadRequestException(`Չսպասարկվող ֆորմատ՝ ${ext || "—"}`);
     }
 
-    const dir = resolve(process.cwd(), "var/uploads");
+    const dir = resolve(
+      process.cwd(),
+      this.config.get<string>("UPLOAD_DIR", "var/uploads"),
+    );
     await mkdir(dir, { recursive: true });
     const dest = join(dir, `${randomUUID()}${ext}`);
     await pipeline(file.file, createWriteStream(dest));

@@ -36,6 +36,26 @@ def pipeline() -> IngestPipeline:
     return _pipeline
 
 
+@app.on_event("startup")
+def warmup() -> None:
+    """Фоновый прогрев моделей: скачивание/загрузка bge-m3 и reranker занимает
+    десятки секунд+ — без прогрева их оплачивает первый вопрос пользователя
+    (и fetch со стороны api может отвалиться по таймауту). /health отвечает
+    сразу — прогрев идёт в отдельном потоке."""
+    import threading
+
+    def _warm() -> None:
+        try:
+            p = pipeline()
+            p.embedder.embed(["warmup"])
+            p.reranker.rerank("warmup", [("w", "warmup")])
+            print("[warmup] модели загружены и готовы", flush=True)
+        except Exception as e:  # noqa: BLE001
+            print(f"[warmup] не удался (продолжаем лениво): {e}", flush=True)
+
+    threading.Thread(target=_warm, daemon=True).start()
+
+
 class IngestResponse(BaseModel):
     document_id: str
     chunk_count: int

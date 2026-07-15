@@ -1,13 +1,78 @@
 # ─────────────────────────────────────────────────────────────────────────
-# Инфраструктура Enterprise RAG Assistant (локальная разработка).
-# Целевая среда — один сервер + Docker Compose (см. CLAUDE.md, docs/02).
-# Запуск:  pnpm infra:up   (== docker compose -f docker/docker-compose.yml up -d)
-# Значения берутся из корневого .env (см. .env.example).
+# Enterprise RAG Assistant — один сервер + Docker Compose (CLAUDE.md, docs/02).
+#
+# Только инфраструктура (dev):  pnpm infra:up
+# Весь продукт (prod):          docker compose -f docker/docker-compose.yml \
+#                                 --profile app up -d --build
+# Значения берутся из корневого .env (запускать из корня репозитория).
 # ─────────────────────────────────────────────────────────────────────────
 
 name: rag-ai-chat
 
 services:
+  # ── Приложение (profile "app") ──
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    container_name: rag-api
+    profiles: ["app"]
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      # Внутри сети compose хосты — имена сервисов (перекрывают localhost из .env).
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rag}:${POSTGRES_PASSWORD:-rag_dev_password}@postgres:5432/${POSTGRES_DB:-rag}?schema=public
+      REDIS_URL: redis://redis:6379
+      QDRANT_URL: http://qdrant:6333
+      INGEST_URL: http://ingest:8000
+      UPLOAD_DIR: /uploads
+    ports:
+      - "${API_PORT:-4000}:4000"
+    volumes:
+      - uploads_data:/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    container_name: rag-web
+    profiles: ["app"]
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  ingest:
+    build:
+      context: ../apps/ingest
+    container_name: rag-ingest
+    profiles: ["app"]
+    restart: unless-stopped
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: chunks
+      EMBEDDING_MODEL: bge-m3
+      OMP_NUM_THREADS: "8"
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads_data:/uploads   # тот же volume: api пишет файл, ingest читает
+      - hf_models:/models       # веса bge-m3/reranker (качаются один раз)
+    depends_on:
+      qdrant:
+        condition: service_healthy
+
+  # ── Инфраструктура ──
   postgres:
     image: postgres:16-alpine
     container_name: rag-postgres
@@ -101,3 +166,5 @@ volumes:
   redis_data:
   qdrant_data:
   minio_data:
+  uploads_data:
+  hf_models:

@@ -26,6 +26,9 @@ const envSchema = z.object({
   REDIS_URL: z.string().optional(),
   QDRANT_URL: z.string().optional(),
   INGEST_URL: z.string().default("http://localhost:8000"),
+  // Каталог загруженных документов. В Docker — общий volume api↔ingest
+  // (ingest читает файл по этому же пути при индексации).
+  UPLOAD_DIR: z.string().default("var/uploads"),
 
   // ── RAG / чат (Фаза 3) ──
   LLM_PROVIDER: z.enum(["openai", "anthropic", "stub"]).default("stub"),
