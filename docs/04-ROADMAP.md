@@ -93,7 +93,10 @@
       неинформативна; пересмотреть на живых вопросах). Отчёт:
       `apps/ingest/eval/reports/threshold_report.md`.
       Проверено live: ловушка со скором 0.37 → refused без LLM.
-- [ ] Мини-review датасета админом (страница в админке: approve/reject вопросов).
+- [x] Мини-review датасета админом: страница `/admin/eval` (табы по статусам
+      со счётчиками, approve/reject с audit-логом, экспорт approved в jsonl для
+      `run_thresholds.py`); импорт jsonl через POST /admin/eval/import
+      (идемпотентен по тексту вопроса). Импортированы все 134 вопроса.
 - [ ] LLM-judge (correctness/groundedness) — требует API-токенов, по согласованию.
 
 ## Фаза 5 — Аналитика и полировка (неделя 6)

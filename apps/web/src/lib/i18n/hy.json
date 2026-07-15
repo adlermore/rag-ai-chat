@@ -62,7 +62,8 @@
     "documents": "Փաստաթղթեր",
     "clients": "Հաճախորդներ",
     "analytics": "Վերլուծություն",
-    "audit": "Աուդիտ"
+    "audit": "Աուդիտ",
+    "eval": "Դատասեթ"
   },
   "admin": {
     "panelTitle": "Կառավարման վահանակ",
@@ -166,5 +167,33 @@
     "emptyTitle": "Դեռ ոչինչ չկա",
     "errorTitle": "Ինչ-որ բան չստացվեց",
     "errorHint": "Թարմացրեք էջը կամ փորձեք կրկին"
+  },
+  "eval": {
+    "title": "Գնահատման դատասեթ",
+    "subtitle": "Ստուգողական հարցերի հաստատում կամ մերժում (approve/reject)",
+    "tabAll": "Բոլորը",
+    "tabPending": "Սպասող",
+    "tabApproved": "Հաստատված",
+    "tabRejected": "Մերժված",
+    "colQuestion": "Հարց",
+    "colKind": "Տեսակ",
+    "colStatus": "Կարգավիճակ",
+    "colActions": "Գործողություններ",
+    "kindProse": "տեքստ",
+    "kindTable": "աղյուսակ",
+    "kindTrap": "թակարդ",
+    "statusPending": "սպասում է",
+    "statusApproved": "հաստատված",
+    "statusRejected": "մերժված",
+    "approve": "Հաստատել",
+    "reject": "Մերժել",
+    "expected": "Ակնկալվող պատասխան",
+    "mustRefuse": "Պատասխան չկա (մերժում)",
+    "export": "Արտահանել հաստատվածները",
+    "emptyTitle": "Դատասեթը դատարկ է",
+    "emptyHint": "Ներմուծեք գեներացված հարցերը eval/gen_dataset.py-ից",
+    "loadError": "Չհաջողվեց բեռնել դատասեթը",
+    "prev": "Նախորդ",
+    "next": "Հաջորդ"
   }
 }

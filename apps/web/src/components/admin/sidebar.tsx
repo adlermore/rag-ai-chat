@@ -6,6 +6,7 @@ import {
   BarChart3,
   FileText,
   LogOut,
+  ListChecks,
   ScrollText,
   Users,
   type LucideIcon,
@@ -25,6 +26,7 @@ const NAV: NavItem[] = [
   { href: "/admin/documents", labelKey: "nav.documents", icon: FileText },
   { href: "/admin/clients", labelKey: "nav.clients", icon: Users },
   { href: "/admin/analytics", labelKey: "nav.analytics", icon: BarChart3 },
+  { href: "/admin/eval", labelKey: "nav.eval", icon: ListChecks },
   { href: "/admin/audit", labelKey: "nav.audit", icon: ScrollText },
 ];
 

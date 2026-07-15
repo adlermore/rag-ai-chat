@@ -10,3 +10,4 @@ export * from "./dto/users.js";
 export * from "./dto/documents.js";
 export * from "./dto/chat.js";
 export * from "./dto/analytics.js";
+export * from "./dto/eval.js";

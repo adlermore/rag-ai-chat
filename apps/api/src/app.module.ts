@@ -10,6 +10,7 @@ import { UsersModule } from "./users/users.module";
 import { DocumentsModule } from "./documents/documents.module";
 import { ChatModule } from "./chat/chat.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
+import { EvalModule } from "./eval/eval.module";
 import { HealthModule } from "./health/health.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { RolesGuard } from "./common/guards/roles.guard";
@@ -40,6 +41,7 @@ import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
     DocumentsModule,
     ChatModule,
     AnalyticsModule,
+    EvalModule,
     HealthModule,
   ],
   providers: [
