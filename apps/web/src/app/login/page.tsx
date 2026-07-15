@@ -77,13 +77,13 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center px-4 py-12">
+    <div className="relative flex min-h-screen flex-col">
       <div className="absolute right-4 top-4">
         <ThemeToggle />
       </div>
 
-      <div className="flex w-full max-w-md flex-col items-center">
-      <Card className="w-full">
+      <main className="flex flex-1 items-center justify-center px-4 py-12">
+      <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
           <div className="flex justify-center pb-1">
             <BrandMark size={56} />
@@ -141,12 +141,13 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
+      </main>
 
-      <div className="mt-5 flex flex-col items-center gap-2 rounded-xl border border-border bg-card px-5 py-3">
+      {/* Футер страницы — отдельная полоса снизу (как в приложении), не «карточка» */}
+      <footer className="flex h-14 shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t border-border bg-card px-4">
         <DemoBadge full />
         <PoweredBySteply />
-      </div>
-      </div>
-    </main>
+      </footer>
+    </div>
   );
 }
