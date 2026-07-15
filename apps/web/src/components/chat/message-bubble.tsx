@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { MessageSource } from "@rag/shared";
 import {
   Button,
@@ -12,7 +12,14 @@ import {
   DialogTitle,
   cn,
 } from "@rag/ui";
-import { ExternalLink, FileSpreadsheet, FileText, SearchX } from "lucide-react";
+import {
+  ExternalLink,
+  FileSpreadsheet,
+  FileText,
+  Search,
+  SearchX,
+  Sparkles,
+} from "lucide-react";
 import {
   downloadDocumentFile,
   fetchDocumentBlobUrl,
@@ -186,20 +193,36 @@ function SourceDialog({
   );
 }
 
-function ThinkingDots() {
+/**
+ * Индикатор ожидания ответа. Стадии отражают реальный порядок пайплайна
+ * (гибридный поиск → генерация): метка переключается по таймеру, а «скелетон»
+ * из shimmer-полос создаёт ощущение формирующегося ответа и снижает
+ * воспринимаемую задержку (docs — приоритет скорости).
+ */
+function ThinkingIndicator() {
+  const [composing, setComposing] = useState(false);
+
+  useEffect(() => {
+    // Поиск в базе обычно занимает ~1–1.5с, затем начинается генерация.
+    const id = setTimeout(() => setComposing(true), 1400);
+    return () => clearTimeout(id);
+  }, []);
+
+  const StageIcon = composing ? Sparkles : Search;
+
   return (
-    <span className="inline-flex items-center gap-1.5 py-1" aria-label={t("chat.thinking")}>
-      <span className="text-[13px] text-muted-foreground">{t("chat.thinking")}</span>
-      <span className="inline-flex gap-0.5">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="size-1 animate-bounce rounded-full bg-muted-foreground/60"
-            style={{ animationDelay: `${i * 150}ms` }}
-          />
-        ))}
-      </span>
-    </span>
+    <div className="flex flex-col gap-3 py-0.5" role="status" aria-live="polite">
+      <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
+        <StageIcon className="size-4 animate-pulse text-primary" />
+        <span>{composing ? t("chat.composing") : t("chat.searching")}</span>
+      </div>
+      {/* Скелетон формирующегося ответа */}
+      <div className="flex flex-col gap-2" aria-hidden="true">
+        <div className="shimmer-bar h-2.5 w-[88%]" />
+        <div className="shimmer-bar h-2.5 w-[70%]" />
+        <div className="shimmer-bar h-2.5 w-[78%]" />
+      </div>
+    </div>
   );
 }
 
@@ -270,7 +293,7 @@ export function MessageBubble({
         )}
 
         {thinking ? (
-          <ThinkingDots />
+          <ThinkingIndicator />
         ) : (
           <div className="text-[15px] text-foreground">
             <MarkdownAnswer
