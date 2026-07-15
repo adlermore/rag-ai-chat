@@ -94,9 +94,6 @@ export default function LoginPage() {
           <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             {t("app.bankFull")}
           </p>
-          <div className="flex justify-center">
-            <DemoBadge full />
-          </div>
           <CardTitle className="text-lg font-semibold">
             {t("auth.loginTitle")}
           </CardTitle>
@@ -145,7 +142,10 @@ export default function LoginPage() {
         </CardContent>
       </Card>
 
-      <PoweredBySteply className="mt-5" />
+      <div className="mt-5 flex flex-col items-center gap-2">
+        <DemoBadge full />
+        <PoweredBySteply />
+      </div>
       </div>
     </main>
   );

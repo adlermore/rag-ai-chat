@@ -131,7 +131,6 @@ function ChatWorkspace() {
         <span className="min-w-0 truncate font-display text-[15px] font-semibold leading-tight text-foreground">
           {t("app.name")}
         </span>
-        <DemoBadge />
       </div>
 
       <div className="px-3 pb-2">
@@ -236,7 +235,6 @@ function ChatWorkspace() {
               <Menu className="size-4" />
             </Button>
             <BrandMark size={26} />
-            <DemoBadge />
             <span className="font-display text-sm font-semibold text-foreground">
               {t("app.name")}
             </span>
@@ -311,7 +309,8 @@ function ChatWorkspace() {
         <div className="px-4 pb-3 pt-1">
           <div className="mx-auto max-w-3xl">
             <Composer disabled={busy} onSend={send} />
-            <div className="mt-2 flex justify-center">
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <DemoBadge />
               <PoweredBySteply />
             </div>
           </div>
