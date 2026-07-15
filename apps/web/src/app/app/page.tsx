@@ -17,6 +17,7 @@ import {
   type Chat,
   type ChatMessage,
   type Confidence,
+  type PendingPhase,
 } from "@/lib/api/chat";
 import { MessageBubble } from "@/components/chat/message-bubble";
 import { Composer } from "@/components/chat/composer";
@@ -30,6 +31,7 @@ function ChatWorkspace() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamContent, setStreamContent] = useState<string | null>(null);
   const [streamSources, setStreamSources] = useState<MessageSource[]>([]);
+  const [pendingMode, setPendingMode] = useState<PendingPhase>("search");
   const [busy, setBusy] = useState(false);
   const [navOpen, setNavOpen] = useState(false); // мобильный сайдбар (Sheet)
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -89,6 +91,7 @@ function ChatWorkspace() {
       let srcs: MessageSource[] = [];
       setStreamContent("");
       setStreamSources([]);
+      setPendingMode("search"); // сбрасываем; бэкенд пришлёт "chat" для реплик
 
       const finalize = (
         id: string,
@@ -105,6 +108,7 @@ function ChatWorkspace() {
       };
 
       await streamMessage(chatId, text, {
+        onPhase: (p) => setPendingMode(p),
         onToken: (v) => {
           acc += v;
           setStreamContent(acc);
@@ -291,6 +295,7 @@ function ChatWorkspace() {
                 {streamContent !== null && (
                   <MessageBubble
                     streaming
+                    pendingMode={pendingMode}
                     message={{
                       id: "streaming",
                       role: "assistant",

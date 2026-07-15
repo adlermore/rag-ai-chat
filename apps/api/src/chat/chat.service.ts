@@ -108,6 +108,9 @@ export class ChatService {
     // вопросы по-прежнему идут ниже через поиск с порогами.
     const smalltalk = detectSmallTalk(content);
     if (smalltalk) {
+      // Ранний сигнал фронту: это разговорная реплика → нейтральный индикатор
+      // ожидания (без «ищу в базе»).
+      yield { type: "phase", value: "chat" };
       const reply: CachedAnswer = {
         content: smalltalk.reply,
         confidence: "high",
@@ -116,6 +119,10 @@ export class ChatService {
         tokensOut: null,
       };
       const saved = await this.persistAnswer(chatId, reply, { cached: false });
+      // Небольшая пауза, чтобы ответ не «выстреливал» мгновенно, а появлялся
+      // после короткого индикатора — так диалог ощущается естественнее.
+      const delay = this.config.get<number>("SMALLTALK_DELAY_MS", 700);
+      await new Promise((r) => setTimeout(r, delay));
       yield { type: "token", value: smalltalk.reply };
       yield { type: "done", messageId: saved.messageId, confidence: "high" };
       return;

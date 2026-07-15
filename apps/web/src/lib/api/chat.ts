@@ -32,11 +32,14 @@ export const chatApi = {
   },
 };
 
+export type PendingPhase = "search" | "chat";
+
 export interface StreamHandlers {
   onToken: (value: string) => void;
   onSources: (sources: MessageSource[]) => void;
   onDone: (messageId: string, confidence: Confidence) => void;
   onError: (message: string) => void;
+  onPhase?: (phase: PendingPhase) => void;
 }
 
 /**
@@ -74,6 +77,9 @@ export async function streamMessage(
 
   const dispatch = (evt: ChatStreamEvent) => {
     switch (evt.type) {
+      case "phase":
+        h.onPhase?.(evt.value);
+        break;
       case "token":
         h.onToken(evt.value);
         break;

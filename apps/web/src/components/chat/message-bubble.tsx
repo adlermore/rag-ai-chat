@@ -16,6 +16,7 @@ import {
   ExternalLink,
   FileSpreadsheet,
   FileText,
+  MessageSquare,
   Search,
   SearchX,
   Sparkles,
@@ -199,28 +200,36 @@ function SourceDialog({
  * из shimmer-полос создаёт ощущение формирующегося ответа и снижает
  * воспринимаемую задержку (docs — приоритет скорости).
  */
-function ThinkingIndicator() {
+function ThinkingIndicator({ mode = "search" }: { mode?: "search" | "chat" }) {
   const [composing, setComposing] = useState(false);
+  const isChat = mode === "chat";
 
   useEffect(() => {
+    // Разговорная реплика — без стадий (короткий ответ, не ищем в базе).
+    if (isChat) return;
     // Поиск в базе обычно занимает ~1–1.5с, затем начинается генерация.
     const id = setTimeout(() => setComposing(true), 1400);
     return () => clearTimeout(id);
-  }, []);
+  }, [isChat]);
 
-  const StageIcon = composing ? Sparkles : Search;
+  const StageIcon = isChat ? MessageSquare : composing ? Sparkles : Search;
+  const label = isChat
+    ? t("chat.replying")
+    : composing
+      ? t("chat.composing")
+      : t("chat.searching");
 
   return (
     <div className="flex flex-col gap-3 py-0.5" role="status" aria-live="polite">
       <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
         <StageIcon className="size-4 animate-pulse text-primary" />
-        <span>{composing ? t("chat.composing") : t("chat.searching")}</span>
+        <span>{label}</span>
       </div>
-      {/* Скелетон формирующегося ответа */}
+      {/* Скелетон формирующегося ответа (для реплики — одна строка) */}
       <div className="flex flex-col gap-2" aria-hidden="true">
         <div className="shimmer-bar h-2.5 w-[88%]" />
-        <div className="shimmer-bar h-2.5 w-[70%]" />
-        <div className="shimmer-bar h-2.5 w-[78%]" />
+        {!isChat && <div className="shimmer-bar h-2.5 w-[70%]" />}
+        {!isChat && <div className="shimmer-bar h-2.5 w-[78%]" />}
       </div>
     </div>
   );
@@ -229,9 +238,11 @@ function ThinkingIndicator() {
 export function MessageBubble({
   message,
   streaming = false,
+  pendingMode = "search",
 }: {
   message: ChatMessage;
   streaming?: boolean;
+  pendingMode?: "search" | "chat";
 }) {
   // Хук — до любых ранних return (правила хуков React).
   const [selectedSource, setSelectedSource] = useState<MessageSource | null>(null);
@@ -301,7 +312,7 @@ export function MessageBubble({
         )}
 
         {thinking ? (
-          <ThinkingIndicator />
+          <ThinkingIndicator mode={pendingMode} />
         ) : (
           <div className="text-[15px] text-foreground">
             <MarkdownAnswer

@@ -21,6 +21,9 @@ export type SendMessageRequest = z.infer<typeof sendMessageSchema>;
  * error   — ошибка во время генерации.
  */
 export type ChatStreamEvent =
+  // phase — ранний сигнал режима ответа: "search" (обычный RAG) или "chat"
+  // (разговорная реплика). Фронт выбирает подпись индикатора ожидания.
+  | { type: "phase"; value: "search" | "chat" }
   | { type: "token"; value: string }
   | { type: "sources"; sources: MessageSource[] }
   | { type: "done"; messageId: string; confidence: Confidence }
