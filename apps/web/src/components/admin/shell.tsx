@@ -52,7 +52,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 p-3">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
         {NAV.map((item) => {
           const active = pathname.startsWith(item.href);
           const Icon = item.icon;
@@ -106,7 +106,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [navOpen, setNavOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen">
+    // h-screen: layout ровно по высоте устройства — сайдбар и контент скроллятся
+    // независимо (сайдбар не тянется под длинную страницу, меню не обрезается).
+    <div className="flex h-screen overflow-hidden">
       {/* Desktop-сайдбар */}
       <aside className="hidden w-64 shrink-0 flex-col border-e border-border bg-card md:flex">
         <SidebarContent />
@@ -158,7 +160,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </span>
         </header>
 
-        <main className="min-w-0 flex-1 overflow-x-hidden">{children}</main>
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+          {children}
+        </main>
       </div>
     </div>
   );

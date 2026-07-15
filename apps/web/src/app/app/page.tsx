@@ -145,7 +145,7 @@ function ChatWorkspace() {
           {t("chat.historyTitle")}
         </p>
       )}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-3">
+      <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 pb-3">
         {chats.map((c) => (
           <button
             key={c.id}
