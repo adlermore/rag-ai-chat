@@ -311,10 +311,17 @@ function ChatWorkspace() {
           </div>
         </div>
 
-        {/* Полоса-футер (bg-card), h-14: демо слева, атрибуция Steply справа */}
-        <footer className="flex h-14 shrink-0 items-center justify-between gap-2 border-t border-border bg-card px-4">
-          <DemoBadge />
-          <PoweredBySteply />
+        {/* Полоса-футер (bg-card), h-14: демо слева, дисклеймер об ИИ по центру, Steply справа */}
+        <footer className="grid h-14 shrink-0 grid-cols-[auto_1fr_auto] items-center gap-3 border-t border-border bg-card px-4">
+          <div className="flex justify-start">
+            <DemoBadge />
+          </div>
+          <p className="min-w-0 truncate text-center text-[11px] text-muted-foreground">
+            {t("app.aiDisclaimer")}
+          </p>
+          <div className="flex justify-end">
+            <PoweredBySteply />
+          </div>
         </footer>
       </div>
     </div>
