@@ -103,10 +103,21 @@ export class ChatService {
 
     // Follow-up («а минимальная?») переписываем в самостоятельный вопрос —
     // иначе retrieval ищет по обрывку. Первый вопрос чата — как есть.
+    // ПАРАЛЛЕЛЬ (perf): rewrite и «оптимистичный» поиск по сырому вопросу идут
+    // одновременно; если rewrite ничего не изменил (частый случай) — результат
+    // поиска уже готов, экономим полный LLM-вызов из критического пути.
+    const topOut = this.config.get<number>("RERANK_TOP_OUT", 5);
     let query = content;
+    let prefetched: RetrievalHit[] | null = null;
     if (history.length > 0) {
-      query = await this.llm.rewrite(content, history);
-      if (query !== content) {
+      const [rewritten, optimistic] = await Promise.all([
+        this.llm.rewrite(content, history),
+        this.ingest.search(content, topOut).catch(() => null),
+      ]);
+      query = rewritten;
+      if (query === content) {
+        prefetched = optimistic;
+      } else {
         this.logger.log(`rewrite: «${content}» → «${query}»`);
       }
     }
@@ -123,13 +134,12 @@ export class ChatService {
       return;
     }
 
-    const topOut = this.config.get<number>("RERANK_TOP_OUT", 5);
     const low = this.config.get<number>("THRESHOLD_LOW", 0.35);
     const high = this.config.get<number>("THRESHOLD_HIGH", 0.62);
 
     let hits: RetrievalHit[] = [];
     try {
-      hits = await this.ingest.search(query, topOut);
+      hits = prefetched ?? (await this.ingest.search(query, topOut));
     } catch (e) {
       this.logger.error(`retrieval упал: ${e}`);
       yield { type: "error", message: "Որոնման ծառայությունը հասանելի չէ։" };
