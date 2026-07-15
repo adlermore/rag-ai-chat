@@ -17,6 +17,7 @@ import {
 import { Button, cn } from "@rag/ui";
 import { BrandMark } from "@/components/brand";
 import { DemoBadge } from "@/components/demo-badge";
+import { PoweredBySteply } from "@/components/powered-by-steply";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth/context";
 import { t, type TranslationKey } from "@/lib/i18n";
@@ -92,6 +93,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <LogOut className="size-4" />
           {t("auth.logout")}
         </Button>
+        <PoweredBySteply center />
       </div>
     </>
   );

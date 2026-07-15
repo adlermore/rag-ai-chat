@@ -6,6 +6,7 @@ import { Button, cn } from "@rag/ui";
 import { LogOut, Menu, Plus, Sparkles, X } from "lucide-react";
 import { BrandMark } from "@/components/brand";
 import { DemoBadge } from "@/components/demo-badge";
+import { PoweredBySteply } from "@/components/powered-by-steply";
 import { RequireAuth } from "@/components/auth/require-auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth/context";
@@ -181,6 +182,7 @@ function ChatWorkspace() {
             </Button>
           </div>
         </div>
+        <PoweredBySteply center className="mt-2.5" />
       </div>
     </>
   );

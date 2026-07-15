@@ -19,6 +19,7 @@ import { ApiError } from "@/lib/api/client";
 import { t } from "@/lib/i18n";
 import { BrandMark } from "@/components/brand";
 import { DemoBadge } from "@/components/demo-badge";
+import { PoweredBySteply } from "@/components/powered-by-steply";
 
 function destinationFor(role: string): string {
   return role === Role.Admin ? "/admin" : "/app";
@@ -81,7 +82,8 @@ export default function LoginPage() {
         <ThemeToggle />
       </div>
 
-      <Card className="w-full max-w-md">
+      <div className="flex w-full max-w-md flex-col items-center">
+      <Card className="w-full">
         <CardHeader className="space-y-2 text-center">
           <div className="flex justify-center pb-1">
             <BrandMark size={56} />
@@ -142,6 +144,9 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
+
+      <PoweredBySteply center className="mt-5" />
+      </div>
     </main>
   );
 }
