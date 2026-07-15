@@ -6,7 +6,10 @@ import { dictionary } from "@/lib/i18n";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: dictionary.app.name,
+  title:
+    process.env.NEXT_PUBLIC_DEMO === "1"
+      ? `${dictionary.app.name} · ${dictionary.app.demo}`
+      : dictionary.app.name,
   description: dictionary.app.tagline,
 };
 

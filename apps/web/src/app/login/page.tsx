@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth/context";
 import { ApiError } from "@/lib/api/client";
 import { t } from "@/lib/i18n";
 import { BrandMark } from "@/components/brand";
+import { DemoBadge } from "@/components/demo-badge";
 
 function destinationFor(role: string): string {
   return role === Role.Admin ? "/admin" : "/app";
@@ -91,6 +92,9 @@ export default function LoginPage() {
           <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             {t("app.bankFull")}
           </p>
+          <div className="flex justify-center">
+            <DemoBadge full />
+          </div>
           <CardTitle className="text-lg font-semibold">
             {t("auth.loginTitle")}
           </CardTitle>

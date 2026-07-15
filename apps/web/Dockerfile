@@ -18,6 +18,8 @@ COPY apps/web apps/web
 # NEXT_PUBLIC_* вшивается в бандл на этапе next build.
 ARG NEXT_PUBLIC_API_URL=http://localhost:4000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_DEMO=1
+ENV NEXT_PUBLIC_DEMO=$NEXT_PUBLIC_DEMO
 
 RUN pnpm --filter @rag/shared build && pnpm --filter @rag/web build
 

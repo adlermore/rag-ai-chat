@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button, cn } from "@rag/ui";
 import { BrandMark } from "@/components/brand";
+import { DemoBadge } from "@/components/demo-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth/context";
 import { t, type TranslationKey } from "@/lib/i18n";
@@ -43,8 +44,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <div className="flex items-center gap-3 border-b border-border p-4">
         <BrandMark size={34} />
         <div className="min-w-0">
-          <p className="truncate font-display text-[15px] font-bold leading-tight text-foreground">
-            {t("app.name")}
+          <p className="flex items-center gap-1.5 truncate font-display text-[15px] font-bold leading-tight text-foreground">
+            <span className="truncate">{t("app.name")}</span>
+            <DemoBadge />
           </p>
           <p className="truncate text-xs text-muted-foreground">{t("admin.panelTitle")}</p>
         </div>
