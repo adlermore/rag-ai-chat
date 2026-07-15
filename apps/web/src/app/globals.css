@@ -13,25 +13,28 @@
   Инлайн-hex в компонентах запрещён.
 */
 :root {
-  --background: #faf9f7;
-  --foreground: #26221e;
+  --background: #f7f9fc;
+  --foreground: #1a2332;
   --card: #ffffff;
-  --card-foreground: #26221e;
+  --card-foreground: #1a2332;
   --popover: #ffffff;
-  --popover-foreground: #26221e;
-  --muted: #f0ede9;
-  --muted-foreground: #6e675f;
-  --secondary: #f0ede9;
-  --secondary-foreground: #26221e;
-  --accent: #f0ede9;
-  --accent-foreground: #26221e;
-  --border: #e4e0da;
-  --input: #e4e0da;
-  --primary: #c75b12; /* абрикос — только интерактив */
+  --popover-foreground: #1a2332;
+  --muted: #edf1f7;
+  --muted-foreground: #5c6675;
+  --secondary: #edf1f7;
+  --secondary-foreground: #1a2332;
+  --accent: #edf1f7;
+  --accent-foreground: #1a2332;
+  --border: #dee4ec;
+  --input: #dee4ec;
+  --primary: #17427c; /* фирменный синий ЦБ — только интерактив */
   --primary-foreground: #ffffff;
-  --ring: #c75b12;
+  --ring: #17427c;
   --destructive: #b3261e;
   --destructive-foreground: #ffffff;
+
+  /* Золото ЦБ — только эмблема и тонкие декоративные акценты, не интерактив */
+  --brand-gold: #c9a227;
 
   /* Семантика уверенности ответа AI */
   --confidence-high: #1e7f4f;
@@ -42,25 +45,27 @@
 }
 
 .dark {
-  --background: #191715;
-  --foreground: #edeae6;
-  --card: #211e1b;
-  --card-foreground: #edeae6;
-  --popover: #211e1b;
-  --popover-foreground: #edeae6;
-  --muted: #2a2724;
-  --muted-foreground: #9c948b;
-  --secondary: #2a2724;
-  --secondary-foreground: #edeae6;
-  --accent: #2a2724;
-  --accent-foreground: #edeae6;
-  --border: #37332e;
-  --input: #37332e;
-  --primary: #e8871e;
-  --primary-foreground: #1c1409;
-  --ring: #e8871e;
+  --background: #0f141c;
+  --foreground: #e8ecf2;
+  --card: #151b25;
+  --card-foreground: #e8ecf2;
+  --popover: #151b25;
+  --popover-foreground: #e8ecf2;
+  --muted: #1d2530;
+  --muted-foreground: #93a0b4;
+  --secondary: #1d2530;
+  --secondary-foreground: #e8ecf2;
+  --accent: #1d2530;
+  --accent-foreground: #e8ecf2;
+  --border: #2a3442;
+  --input: #2a3442;
+  --primary: #6f9ce0;
+  --primary-foreground: #0d1524;
+  --ring: #6f9ce0;
   --destructive: #e5544b;
   --destructive-foreground: #ffffff;
+
+  --brand-gold: #d9b545;
 
   --confidence-high: #4fb985;
   --confidence-low: #d6a73a;

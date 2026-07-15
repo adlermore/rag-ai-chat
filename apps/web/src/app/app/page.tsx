@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { MessageSource } from "@rag/shared";
 import { Button, cn } from "@rag/ui";
 import { LogOut, Menu, Plus, Sparkles, X } from "lucide-react";
+import { BrandMark } from "@/components/brand";
 import { RequireAuth } from "@/components/auth/require-auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth/context";
@@ -124,9 +125,7 @@ function ChatWorkspace() {
   const sidebarContent = (
     <>
       <div className="flex items-center gap-2.5 px-4 pb-4 pt-5">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-          <Sparkles className="size-4 text-primary" />
-        </span>
+        <BrandMark size={32} />
         <span className="font-display text-[15px] font-semibold leading-tight text-foreground">
           {t("app.name")}
         </span>
@@ -233,9 +232,7 @@ function ChatWorkspace() {
             >
               <Menu className="size-4" />
             </Button>
-            <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
-              <Sparkles className="size-3.5 text-primary" />
-            </span>
+            <BrandMark size={26} />
             <span className="font-display text-sm font-semibold text-foreground">
               {t("app.name")}
             </span>

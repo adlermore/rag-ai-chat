@@ -17,6 +17,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth/context";
 import { ApiError } from "@/lib/api/client";
 import { t } from "@/lib/i18n";
+import { BrandMark } from "@/components/brand";
 
 function destinationFor(role: string): string {
   return role === Role.Admin ? "/admin" : "/app";
@@ -81,8 +82,14 @@ export default function LoginPage() {
 
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
+          <div className="flex justify-center pb-1">
+            <BrandMark size={56} />
+          </div>
           <p className="font-display text-2xl font-bold text-foreground">
             {t("app.name")}
+          </p>
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            {t("app.bankFull")}
           </p>
           <CardTitle className="text-lg font-semibold">
             {t("auth.loginTitle")}

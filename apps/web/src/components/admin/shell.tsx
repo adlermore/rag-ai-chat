@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button, cn } from "@rag/ui";
+import { BrandMark } from "@/components/brand";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth/context";
 import { t, type TranslationKey } from "@/lib/i18n";
@@ -39,11 +40,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <>
-      <div className="border-b border-border p-4">
-        <p className="font-display text-lg font-bold text-foreground">
-          {t("app.name")}
-        </p>
-        <p className="text-xs text-muted-foreground">{t("admin.panelTitle")}</p>
+      <div className="flex items-center gap-3 border-b border-border p-4">
+        <BrandMark size={34} />
+        <div className="min-w-0">
+          <p className="truncate font-display text-[15px] font-bold leading-tight text-foreground">
+            {t("app.name")}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">{t("admin.panelTitle")}</p>
+        </div>
       </div>
 
       <nav className="flex-1 space-y-1 p-3">
@@ -146,6 +150,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           >
             <Menu className="size-4" />
           </Button>
+          <BrandMark size={24} />
           <span className="font-display text-sm font-semibold text-foreground">
             {t("app.name")}
           </span>
