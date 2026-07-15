@@ -309,12 +309,14 @@ function ChatWorkspace() {
         <div className="px-4 pb-3 pt-1">
           <div className="mx-auto max-w-3xl">
             <Composer disabled={busy} onSend={send} />
-            <div className="mt-2 flex items-center justify-center gap-2">
-              <DemoBadge />
-              <PoweredBySteply />
-            </div>
           </div>
         </div>
+
+        {/* Отдельная полоса-футер (bg-card): демо + атрибуция разработчика */}
+        <footer className="flex shrink-0 items-center justify-center gap-2 border-t border-border bg-card px-4 py-2.5">
+          <DemoBadge />
+          <PoweredBySteply />
+        </footer>
       </div>
     </div>
   );

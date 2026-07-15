@@ -142,7 +142,7 @@ export default function LoginPage() {
         </CardContent>
       </Card>
 
-      <div className="mt-5 flex flex-col items-center gap-2">
+      <div className="mt-5 flex flex-col items-center gap-2 rounded-xl border border-border bg-card px-5 py-3">
         <DemoBadge full />
         <PoweredBySteply />
       </div>

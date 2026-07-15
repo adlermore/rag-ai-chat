@@ -163,8 +163,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
           {children}
         </main>
-        {/* Футер дашборда: пометка демо (слева) + атрибуция разработчика (справа) */}
-        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-8 py-2.5">
+        {/* Футер дашборда: отдельная полоса (bg-card) — демо слева, атрибуция справа */}
+        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-border bg-card px-8 py-2.5">
           <DemoBadge />
           <PoweredBySteply />
         </footer>
