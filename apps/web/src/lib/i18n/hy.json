@@ -31,7 +31,11 @@
     "sourceDialogTitle": "Աղբյուր",
     "fragment": "Հատված փաստաթղթից",
     "openDocument": "Բացել փաստաթուղթը",
-    "opening": "Բացվում է…"
+    "opening": "Բացվում է…",
+    "viewDocument": "Դիտել փաստաթուղթը",
+    "openNewTab": "Նոր ներդիրում",
+    "downloadDocument": "Ներբեռնել",
+    "loadingDocument": "Փաստաթուղթը բեռնվում է…"
   },
   "common": {
     "loading": "Բեռնվում է…",

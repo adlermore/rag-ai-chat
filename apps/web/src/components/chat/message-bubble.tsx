@@ -13,7 +13,11 @@ import {
   cn,
 } from "@rag/ui";
 import { ExternalLink, FileSpreadsheet, FileText, SearchX } from "lucide-react";
-import { openDocumentFile } from "@/lib/api/documents";
+import {
+  downloadDocumentFile,
+  fetchDocumentBlobUrl,
+  openDocumentInNewTab,
+} from "@/lib/api/documents";
 import { t } from "@/lib/i18n";
 import { MarkdownAnswer } from "./markdown";
 import type { ChatMessage, Confidence } from "@/lib/api/chat";
@@ -72,7 +76,7 @@ function SourceCard({
   );
 }
 
-/** Диалог источника: фрагмент чанка + открытие оригинала документа. */
+/** Диалог источника: фрагмент чанка + просмотр PDF прямо в приложении. */
 function SourceDialog({
   source,
   onClose,
@@ -80,55 +84,102 @@ function SourceDialog({
   source: MessageSource | null;
   onClose: () => void;
 }) {
-  const [opening, setOpening] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const loc = source ? sourceLocation(source) : [];
+  const isPdf = source?.documentType === "pdf";
+
+  const close = () => {
+    if (viewerUrl) URL.revokeObjectURL(viewerUrl);
+    setViewerUrl(null);
+    setLoading(false);
+    onClose();
+  };
+
   return (
-    <Dialog open={source !== null} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+    <Dialog open={source !== null} onOpenChange={(o) => !o && close()}>
+      <DialogContent
+        className={cn(viewerUrl && "flex h-[88vh] max-w-5xl flex-col gap-3 sm:max-w-5xl")}
+      >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 pe-8">
             {source?.documentType === "xlsx" ? (
-              <FileSpreadsheet className="size-4 text-primary" />
+              <FileSpreadsheet className="size-4 shrink-0 text-primary" />
             ) : (
-              <FileText className="size-4 text-primary" />
+              <FileText className="size-4 shrink-0 text-primary" />
             )}
-            {source?.documentTitle}
+            <span className="min-w-0 truncate">{source?.documentTitle}</span>
           </DialogTitle>
           {loc.length > 0 && <DialogDescription>{loc.join(" · ")}</DialogDescription>}
         </DialogHeader>
 
-        {source?.snippet && (
-          <div>
-            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              {t("chat.fragment")}
-            </p>
-            <blockquote className="rounded-lg border-s-2 border-primary/50 bg-muted/50 px-3 py-2 text-[13px] leading-relaxed text-foreground">
-              {source.snippet}…
-            </blockquote>
-          </div>
+        {/* Просмотр PDF прямо в браузере (встроенный вьювер) */}
+        {viewerUrl ? (
+          <iframe
+            src={viewerUrl}
+            title={source?.documentTitle}
+            className="h-full min-h-0 w-full flex-1 rounded-lg border border-border bg-muted"
+          />
+        ) : (
+          source?.snippet && (
+            <div>
+              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                {t("chat.fragment")}
+              </p>
+              <blockquote className="rounded-lg border-s-2 border-primary/50 bg-muted/50 px-3 py-2 text-[13px] leading-relaxed text-foreground">
+                {source.snippet}…
+              </blockquote>
+            </div>
+          )
         )}
 
-        <DialogFooter>
-          <Button
-            className="gap-2"
-            disabled={opening || !source}
-            onClick={async () => {
-              if (!source) return;
-              setOpening(true);
-              try {
-                await openDocumentFile(
+        <DialogFooter className="gap-2">
+          {isPdf && !viewerUrl && (
+            <Button
+              className="gap-2"
+              disabled={loading || !source}
+              onClick={async () => {
+                if (!source) return;
+                setLoading(true);
+                try {
+                  setViewerUrl(await fetchDocumentBlobUrl(source.documentId));
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            >
+              <FileText className="size-4" />
+              {loading ? t("chat.loadingDocument") : t("chat.viewDocument")}
+            </Button>
+          )}
+          {isPdf && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              disabled={!source}
+              onClick={() => source && openDocumentInNewTab(source.documentId)}
+            >
+              <ExternalLink className="size-4" />
+              {t("chat.openNewTab")}
+            </Button>
+          )}
+          {!isPdf && (
+            <Button
+              className="gap-2"
+              disabled={!source}
+              onClick={() =>
+                source &&
+                void downloadDocumentFile(
                   source.documentId,
                   source.documentTitle,
                   source.documentType,
-                );
-              } finally {
-                setOpening(false);
+                )
               }
-            }}
-          >
-            <ExternalLink className="size-4" />
-            {opening ? t("chat.opening") : t("chat.openDocument")}
-          </Button>
+            >
+              <ExternalLink className="size-4" />
+              {t("chat.downloadDocument")}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -52,26 +52,38 @@ export const documentsApi = {
   },
 };
 
-/** Открывает оригинал документа: PDF — в новой вкладке, прочее — скачиванием.
- *  Файл за auth-заголовком, поэтому качаем blob и открываем object-URL. */
-export async function openDocumentFile(
-  documentId: string,
-  title: string,
-  type: string,
-): Promise<void> {
+/** Качает оригинал (файл за auth-заголовком) и возвращает object-URL. */
+export async function fetchDocumentBlobUrl(documentId: string): Promise<string> {
   const res = await fetch(`${API_URL}/documents/${documentId}/file`, {
     headers: { Authorization: `Bearer ${tokenStorage.access ?? ""}` },
   });
   if (!res.ok) throw new Error(`file ${res.status}`);
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  if (type === "pdf") {
-    window.open(url, "_blank", "noopener");
-  } else {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title}.${type}`;
-    a.click();
-  }
+  return URL.createObjectURL(await res.blob());
+}
+
+/** Скачивание файла (DOCX/XLSX — браузер их не рендерит). */
+export async function downloadDocumentFile(
+  documentId: string,
+  title: string,
+  type: string,
+): Promise<void> {
+  const url = await fetchDocumentBlobUrl(documentId);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${title}.${type}`;
+  a.click();
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/**
+ * Открытие PDF в новой вкладке БЕЗ блокировки попапа: окно открывается
+ * синхронно в user-gesture (до await), URL подставляется после загрузки.
+ */
+export function openDocumentInNewTab(documentId: string): void {
+  const w = window.open("", "_blank");
+  fetchDocumentBlobUrl(documentId)
+    .then((url) => {
+      if (w) w.location.href = url;
+    })
+    .catch(() => w?.close());
 }
