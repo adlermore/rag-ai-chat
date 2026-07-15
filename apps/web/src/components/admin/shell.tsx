@@ -76,22 +76,23 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
 
-      <div className="space-y-3 border-t border-border p-3">
-        <div className="flex items-center justify-between">
-          <span className="truncate text-xs text-muted-foreground" dir="ltr">
-            {user?.email}
-          </span>
+      {/* h-14 — совпадает по высоте с футером дашборда, чтобы нижние полосы выровнялись */}
+      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-t border-border px-3">
+        <span className="min-w-0 truncate text-xs text-muted-foreground" dir="ltr">
+          {user?.email}
+        </span>
+        <div className="flex shrink-0 items-center gap-1">
           <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={logout}
+            aria-label={t("auth.logout")}
+            title={t("auth.logout")}
+          >
+            <LogOut className="size-4" />
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full justify-start gap-2"
-          onClick={logout}
-        >
-          <LogOut className="size-4" />
-          {t("auth.logout")}
-        </Button>
       </div>
     </>
   );
@@ -163,8 +164,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
           {children}
         </main>
-        {/* Футер дашборда: отдельная полоса (bg-card) — демо слева, атрибуция справа */}
-        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-border bg-card px-8 py-2.5">
+        {/* Футер дашборда: h-14 (как у футера сайдбара) — демо слева, атрибуция справа */}
+        <footer className="flex h-14 shrink-0 items-center justify-between gap-3 border-t border-border bg-card px-8">
           <DemoBadge />
           <PoweredBySteply />
         </footer>
