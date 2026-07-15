@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { MessageSource } from "@rag/shared";
 import {
   Button,
@@ -16,11 +16,12 @@ import {
   ExternalLink,
   FileSpreadsheet,
   FileText,
+  Info,
   MessageSquare,
   Search,
-  SearchX,
   Sparkles,
 } from "lucide-react";
+import { BrandMark } from "@/components/brand";
 import {
   downloadDocumentFile,
   fetchDocumentBlobUrl,
@@ -29,12 +30,6 @@ import {
 import { t } from "@/lib/i18n";
 import { MarkdownAnswer } from "./markdown";
 import type { ChatMessage, Confidence } from "@/lib/api/chat";
-
-const CONFIDENCE_VAR: Record<Confidence, string> = {
-  high: "var(--confidence-high)",
-  low: "var(--confidence-low)",
-  refused: "var(--confidence-none)",
-};
 
 function sourceLocation(source: MessageSource): string[] {
   const loc: string[] = [];
@@ -235,6 +230,18 @@ function ThinkingIndicator({ mode = "search" }: { mode?: "search" | "chat" }) {
   );
 }
 
+/** Строка ответа ассистента: эмблема-аватар слева + колонка контента. */
+function AssistantRow({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex justify-start gap-2.5">
+      <div className="mt-0.5 shrink-0">
+        <BrandMark size={28} />
+      </div>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
 export function MessageBubble({
   message,
   streaming = false,
@@ -260,93 +267,74 @@ export function MessageBubble({
   const confidence = (message.confidence ?? "high") as Confidence;
   const sources = message.sources ?? [];
 
-  // Отказ — спокойная карточка, НЕ ошибка (docs/03-DESIGN-SYSTEM.md).
+  // Отказ — спокойное сообщение, НЕ ошибка (docs/03-DESIGN-SYSTEM.md).
   if (confidence === "refused" && !streaming) {
     return (
-      <div className="flex justify-start">
-        <div className="flex max-w-[85%] items-start gap-3 rounded-2xl rounded-bl-md border border-border bg-muted/40 px-4 py-3.5">
-          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
-            <SearchX className="size-4 text-muted-foreground" />
-          </span>
-          <span>
-            <span className="block text-[14px] font-semibold text-foreground">
-              {t("chat.refusedTitle")}
-            </span>
-            <span className="mt-0.5 block text-[13px] leading-relaxed text-muted-foreground">
-              {t("chat.refusedHint")}
-            </span>
-          </span>
+      <AssistantRow>
+        <div className="w-fit max-w-full rounded-2xl rounded-tl-sm border border-border bg-muted/30 px-4 py-3">
+          <p className="text-[14px] font-semibold text-foreground">
+            {t("chat.refusedTitle")}
+          </p>
+          <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+            {t("chat.refusedHint")}
+          </p>
         </div>
-      </div>
+      </AssistantRow>
     );
   }
 
   const thinking = streaming && message.content.trim().length === 0;
-  // Разговорная реплика (приветствие и т.п.): нет источников и это не отказ —
-  // рендерим нейтрально, без цветной полосы уверенности (это не оценка ответа).
-  const conversational =
-    !streaming && confidence !== "refused" && sources.length === 0;
+  const showLowBadge = confidence === "low" && !streaming;
 
   return (
-    <div className="flex justify-start">
-      <div
-        className={cn(
-          "max-w-[85%] rounded-2xl rounded-bl-md border border-border bg-card px-4 py-3 shadow-[0_1px_2px_rgb(0_0_0/0.04)]",
-        )}
-        style={
-          conversational
-            ? undefined
-            : {
-                borderInlineStartWidth: 3,
-                borderInlineStartColor: CONFIDENCE_VAR[confidence],
-              }
-        }
-      >
-        {confidence === "low" && !streaming && (
-          <p
-            className="mb-2 flex items-center gap-1.5 text-xs font-medium"
-            style={{ color: CONFIDENCE_VAR.low }}
-          >
-            {t("chat.confidenceLow")}
-          </p>
-        )}
+    <>
+      <AssistantRow>
+        <div className="w-fit max-w-full rounded-2xl rounded-tl-sm border border-border bg-card px-4 py-3 shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
+          {/* Пометка неуверенности — компактный бейдж вместо цветной кромки. */}
+          {showLowBadge && (
+            <span className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-[var(--confidence-low)]/40 bg-[var(--confidence-low)]/10 px-2 py-0.5 text-[11px] font-medium text-[var(--confidence-low)]">
+              <Info className="size-3" />
+              {t("chat.confidenceLow")}
+            </span>
+          )}
 
-        {thinking ? (
-          <ThinkingIndicator mode={pendingMode} />
-        ) : (
-          <div className="text-[15px] text-foreground">
-            <MarkdownAnswer
-              text={message.content}
-              sources={sources}
-              messageId={message.id}
-            />
-            {streaming && (
-              <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse rounded-full bg-primary align-middle" />
-            )}
-          </div>
-        )}
+          {thinking ? (
+            <ThinkingIndicator mode={pendingMode} />
+          ) : (
+            <div className="text-[15px] text-foreground">
+              <MarkdownAnswer
+                text={message.content}
+                sources={sources}
+                messageId={message.id}
+              />
+              {streaming && (
+                <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse rounded-full bg-primary align-middle" />
+              )}
+            </div>
+          )}
 
-        {sources.length > 0 && (
-          <div className="mt-3 border-t border-border pt-2.5">
-            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              {t("chat.sources")}
-            </p>
-            <ul className="flex flex-col gap-1">
-              {sources.map((s, i) => (
-                <SourceCard
-                  key={s.id}
-                  source={s}
-                  marker={i + 1}
-                  messageId={message.id}
-                  onSelect={setSelectedSource}
-                />
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
+          {sources.length > 0 && (
+            <div className="mt-3 border-t border-border pt-2.5">
+              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                {t("chat.sources")}
+              </p>
+              <ul className="flex flex-col gap-1">
+                {sources.map((s, i) => (
+                  <SourceCard
+                    key={s.id}
+                    source={s}
+                    marker={i + 1}
+                    messageId={message.id}
+                    onSelect={setSelectedSource}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </AssistantRow>
 
       <SourceDialog source={selectedSource} onClose={() => setSelectedSource(null)} />
-    </div>
+    </>
   );
 }
