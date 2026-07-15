@@ -34,10 +34,41 @@ def pct(x: float) -> str:
     return f"{100 * x:.1f}%"
 
 
+def _alive_chunk_ids(ids: list[str]) -> set[str]:
+    """chunk_id, реально существующие в Qdrant (реиндекс документа меняет id —
+    вопросы с умершими целями исключаются из recall, иначе метрика ложно падает)."""
+    import os
+    import urllib.request
+
+    url = os.environ.get("QDRANT_URL", "http://localhost:6333")
+    coll = os.environ.get("QDRANT_COLLECTION", "chunks")
+    alive: set[str] = set()
+    for i in range(0, len(ids), 256):
+        body = json.dumps({"ids": ids[i : i + 256]}).encode()
+        req = urllib.request.Request(
+            f"{url}/collections/{coll}/points",
+            data=body,
+            headers={"Content-Type": "application/json"},
+        )
+        res = json.load(urllib.request.urlopen(req, timeout=30))
+        alive.update(str(p["id"]) for p in res.get("result", []))
+    return alive
+
+
 def main() -> None:
     rows = [json.loads(l) for l in DATA.open(encoding="utf-8") if l.strip()]
     answerable = [r for r in rows if not r["must_refuse"]]
     traps = [r for r in rows if r["must_refuse"]]
+
+    alive = _alive_chunk_ids([r["chunk_id"] for r in answerable if r["chunk_id"]])
+    stale = [r for r in answerable if r["chunk_id"] and r["chunk_id"] not in alive]
+    if stale:
+        print(
+            f"⚠️  исключено {len(stale)} вопросов: целевой чанк устарел "
+            f"(документ реиндексирован после генерации датасета)"
+        )
+    answerable = [r for r in answerable if r["chunk_id"] in alive]
+    rows = answerable + traps
     print(f"датасет: {len(answerable)} отвечаемых ({sum(1 for r in answerable if r['kind']=='table')} табл.), {len(traps)} ловушек")
 
     pipe = IngestPipeline()
@@ -93,7 +124,12 @@ def main() -> None:
     lines = [
         "# Калибровка порогов guardrail (Фаза 4)",
         "",
-        f"Датасет: {len(ans)} отвечаемых ({len(proses)} проза, {len(tables)} строки таблиц), {len(trp)} ловушек.",
+        f"Датасет: {len(ans)} отвечаемых ({len(proses)} проза, {len(tables)} строки таблиц), {len(trp)} ловушек."
+        + (
+            f" Исключено {len(stale)} вопросов с устаревшими chunk_id (реиндекс)."
+            if stale
+            else ""
+        ),
         "",
         "## Retrieval",
         "",
