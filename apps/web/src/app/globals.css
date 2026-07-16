@@ -155,3 +155,39 @@
     animation: none;
   }
 }
+
+/* Индикатор индексации документа: бегущий сегмент (прогресс неизвестен точно —
+   бэкенд не отдаёт %, поэтому indeterminate-полоса «работа идёт»). */
+@layer components {
+  .progress-track {
+    position: relative;
+    overflow: hidden;
+  }
+  .progress-track > .progress-bar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 9999px;
+    background-color: var(--confidence-low);
+    animation: indeterminate 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes indeterminate {
+  0% {
+    left: -40%;
+    right: 100%;
+  }
+  100% {
+    left: 100%;
+    right: -40%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-track > .progress-bar {
+    animation: none;
+    left: 0;
+    right: 55%;
+  }
+}

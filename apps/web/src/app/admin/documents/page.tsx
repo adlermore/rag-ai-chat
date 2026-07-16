@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@rag/ui";
-import { Eye, FileSpreadsheet, FileText, RotateCw, Trash2 } from "lucide-react";
+import { Eye, FileSpreadsheet, FileText, Info, RotateCw, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { UploadDocumentDialog } from "@/components/admin/upload-document-dialog";
 import { DocumentPreviewDialog } from "@/components/admin/document-preview-dialog";
@@ -83,6 +83,39 @@ function StatusBadge({ doc }: { doc: AdminDocument }) {
   return <Badge variant="secondary">{t("docs.statusQueued")}</Badge>;
 }
 
+/** Индикатор индексации: indeterminate-полоса (точный % бэкенд не отдаёт). */
+function IndexingProgress() {
+  return (
+    <div
+      className="progress-track mt-1.5 h-1 w-28 rounded-full bg-muted"
+      role="progressbar"
+      aria-label={t("docs.indexing")}
+      title={t("docs.slowInfo")}
+    >
+      <div className="progress-bar" />
+    </div>
+  );
+}
+
+/** Info-подсказка при наведении: демо на слабом сервере → медленная индексация. */
+function IndexingInfo() {
+  return (
+    <span className="group relative inline-flex align-middle">
+      <Info
+        className="size-4 cursor-help text-muted-foreground transition-colors hover:text-foreground"
+        tabIndex={0}
+        aria-label={t("docs.slowInfoLabel")}
+      />
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-0 top-full z-50 mt-2 w-72 rounded-lg border border-border bg-popover px-3 py-2 text-xs leading-relaxed text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+      >
+        {t("docs.slowInfo")}
+      </span>
+    </span>
+  );
+}
+
 export default function DocumentsPage() {
   const [state, setState] = useState<LoadState>("loading");
   const [docs, setDocs] = useState<AdminDocument[]>([]);
@@ -140,6 +173,7 @@ export default function DocumentsPage() {
       <PageHeader
         title={t("docs.title")}
         subtitle={t("docs.subtitle")}
+        info={<IndexingInfo />}
         actions={<UploadDocumentDialog onUploaded={() => void load(true)} />}
       />
 
@@ -185,6 +219,9 @@ export default function DocumentsPage() {
                   </TableCell>
                   <TableCell>
                     <StatusBadge doc={d} />
+                    {(d.status === "processing" || d.status === "queued") && (
+                      <IndexingProgress />
+                    )}
                   </TableCell>
                   <TableCell className="text-right font-mono text-xs">
                     {d.chunkCount ?? "—"}
