@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import platform
+import tempfile
 from pathlib import Path
 
 DEFAULT_MODEL = "BAAI/bge-reranker-v2-m3"
@@ -60,7 +61,22 @@ def export_quantized(model_id: str = DEFAULT_MODEL, out: Path | None = None) -> 
     )
     print(f"[onnx] int8-квантование ({arch}) …", flush=True)
     quantizer = ORTQuantizer.from_pretrained(out)
-    quantizer.quantize(save_dir=out, quantization_config=qconfig)
+    # onnxruntime пишет крупные промежуточные файлы (ort.quant.*, ~2 ГБ) в
+    # системный /tmp и НЕ удаляет их при ошибке. На сервере с малым диском это
+    # приводило к бесконечному циклу: нет места → падение → осиротевший temp →
+    # диск забит. Замыкаем temp в TemporaryDirectory (удаляется всегда).
+    _prev_tmp = os.environ.get("TMPDIR")
+    with tempfile.TemporaryDirectory(prefix="onnx-quant-") as _tmp:
+        os.environ["TMPDIR"] = _tmp
+        tempfile.tempdir = None  # сбросить кэш, чтобы подхватился новый TMPDIR
+        try:
+            quantizer.quantize(save_dir=out, quantization_config=qconfig)
+        finally:
+            if _prev_tmp is None:
+                os.environ.pop("TMPDIR", None)
+            else:
+                os.environ["TMPDIR"] = _prev_tmp
+            tempfile.tempdir = None
     print(f"[onnx] готово: {quant_file}", flush=True)
     return out
 

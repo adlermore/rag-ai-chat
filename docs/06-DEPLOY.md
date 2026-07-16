@@ -100,6 +100,17 @@ docker exec rag-postgres pg_dump -U rag rag > backup-$(date +%F).sql
 docker compose -f docker/docker-compose.yml logs -f api web ingest
 ```
 
+## Тюнинг под слабый CPU-сервер (напр. Hetzner CX32, 4 vCPU)
+
+Добавьте в `.env`:
+```dotenv
+RERANKER_BACKEND=torch   # ONNX-квантизация reranker'а на слабом CPU нестабильна
+OMP_NUM_THREADS=4        # под число ядер (8>ядер даёт пробуксовку потоков)
+```
+Docling парсит таблицы в режиме `TableFormerMode.FAST` (иначе многостраничный PDF
+на CPU обрабатывается десятки минут). Индексация большого документа (~1000+
+чанков) на 4 vCPU занимает 15–20 мин — это нормально (эмбеддинг на CPU).
+
 ## Замечания по безопасности
 
 - Не коммитить реальный `.env`.

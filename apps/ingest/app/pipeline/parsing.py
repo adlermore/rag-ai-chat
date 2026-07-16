@@ -19,12 +19,17 @@ _SUPPORTED = {".pdf": "pdf", ".docx": "docx", ".xlsx": "xlsx"}
 
 def _load_converter():
     from docling.datamodel.base_models import InputFormat
-    from docling.datamodel.pipeline_options import PdfPipelineOptions
+    from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode
     from docling.document_converter import DocumentConverter, PdfFormatOption
 
     # PDF заказчика цифровые (docs/01-SPEC.md) → OCR off (быстрее и точнее).
     pdf_opts = PdfPipelineOptions()
     pdf_opts.do_ocr = False
+    # TableFormer в режиме FAST: ACCURATE (дефолт) на CPU катастрофически медленный
+    # — многостраничный PDF мог обрабатываться десятки минут. FAST сохраняет
+    # таблицы, но многократно быстрее (критично на self-hosted CPU-сервере).
+    pdf_opts.do_table_structure = True
+    pdf_opts.table_structure_options.mode = TableFormerMode.FAST
     return DocumentConverter(
         format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_opts)}
     )
