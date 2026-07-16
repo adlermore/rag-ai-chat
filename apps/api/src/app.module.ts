@@ -7,6 +7,10 @@ import { PrismaModule } from "./prisma/prisma.module";
 import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
+import { DocumentsModule } from "./documents/documents.module";
+import { ChatModule } from "./chat/chat.module";
+import { AnalyticsModule } from "./analytics/analytics.module";
+import { EvalModule } from "./eval/eval.module";
 import { HealthModule } from "./health/health.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { RolesGuard } from "./common/guards/roles.guard";
@@ -34,12 +38,18 @@ import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
     AuditModule,
     AuthModule,
     UsersModule,
+    DocumentsModule,
+    ChatModule,
+    AnalyticsModule,
+    EvalModule,
     HealthModule,
   ],
   providers: [
-    // Порядок важен: сначала rate limit, затем аутентификация, затем RBAC.
-    { provide: APP_GUARD, useClass: UserThrottlerGuard },
+    // Порядок важен: СНАЧАЛА аутентификация (кладёт req.user), потом rate limit —
+    // иначе throttler трекает по IP, и офис за NAT делит 20 req/мин на всех
+    // (найдено нагрузочным smoke), затем RBAC.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: UserThrottlerGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],

@@ -7,6 +7,7 @@ import {
   NestFastifyApplication,
 } from "@nestjs/platform-fastify";
 import helmet from "@fastify/helmet";
+import multipart from "@fastify/multipart";
 import { AppModule } from "./app.module";
 
 async function bootstrap(): Promise<void> {
@@ -18,6 +19,10 @@ async function bootstrap(): Promise<void> {
   const config = app.get(ConfigService);
 
   await app.register(helmet);
+  // Multipart-загрузка документов из админки (модель «один сервер», без MinIO).
+  await app.register(multipart, {
+    limits: { fileSize: 100 * 1024 * 1024, files: 1 },
+  });
 
   app.enableCors({
     origin: config

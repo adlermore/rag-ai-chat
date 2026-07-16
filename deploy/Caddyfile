@@ -1,0 +1,23 @@
+# Reverse-proxy с автоматическим HTTPS (Let's Encrypt).
+# 1. Заведите A-запись домена на IP сервера (rag.example.am → 1.2.3.4).
+# 2. Замените rag.example.am ниже на ваш домен.
+# 3. Запустите Caddy (host-сеть, чтобы видеть localhost:3000/4000):
+#      docker run -d --name caddy --restart unless-stopped --network host \
+#        -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile" \
+#        -v caddy_data:/data -v caddy_config:/config caddy:2
+#
+# ВАЖНО: в .env выставьте под этот домен ДО сборки web:
+#   NEXT_PUBLIC_API_URL=https://rag.example.am/api
+#   CORS_ORIGINS=https://rag.example.am
+
+rag.example.am {
+	# API — под префиксом /api (префикс срезается перед проксированием)
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy 127.0.0.1:4000
+	}
+	# Всё остальное — веб (Next.js)
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}

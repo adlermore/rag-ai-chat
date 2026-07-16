@@ -128,6 +128,8 @@ model MessageSource {
   row        Int?
   chunkId    String  @map("chunk_id")
   score      Float
+  // Первые ~240 символов чанка — превью в HoverCard цитаты (дизайн-система).
+  snippet    String?
 
   message  Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
   document Document @relation(fields: [documentId], references: [id])
@@ -163,4 +165,30 @@ model DailyStats {
   cacheHits     Int      @default(0) @map("cache_hits")
 
   @@map("daily_stats")
+}
+
+// ─────────────────── Eval-датасет (Фаза 4: review админом) ───────────────────
+
+enum EvalStatus {
+  pending
+  approved
+  rejected
+}
+
+/// Вопрос синтетического eval-датасета (docs/05-EVALUATION.md).
+/// Генерируется скриптом, админ делает approve/reject; rejected исключаются
+/// из метрик при следующей калибровке.
+model EvalQuestion {
+  id             String     @id @default(uuid()) @db.Uuid
+  question       String
+  expectedAnswer String     @default("") @map("expected_answer")
+  chunkId        String?    @map("chunk_id")
+  documentId     String?    @map("document_id")
+  mustRefuse     Boolean    @default(false) @map("must_refuse")
+  kind           String     @default("prose") // prose | table | trap
+  status         EvalStatus @default(pending)
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  @@index([status])
+  @@map("eval_questions")
 }

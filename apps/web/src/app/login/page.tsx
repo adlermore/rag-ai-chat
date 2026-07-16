@@ -17,6 +17,9 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth/context";
 import { ApiError } from "@/lib/api/client";
 import { t } from "@/lib/i18n";
+import { BrandMark } from "@/components/brand";
+import { DemoBadge } from "@/components/demo-badge";
+import { PoweredBySteply } from "@/components/powered-by-steply";
 
 function destinationFor(role: string): string {
   return role === Role.Admin ? "/admin" : "/app";
@@ -74,15 +77,22 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center px-4 py-12">
+    <div className="relative flex min-h-screen flex-col">
       <div className="absolute right-4 top-4">
         <ThemeToggle />
       </div>
 
+      <main className="flex flex-1 items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
+          <div className="flex justify-center pb-1">
+            <BrandMark size={56} />
+          </div>
           <p className="font-display text-2xl font-bold text-foreground">
             {t("app.name")}
+          </p>
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            {t("app.bankFull")}
           </p>
           <CardTitle className="text-lg font-semibold">
             {t("auth.loginTitle")}
@@ -131,6 +141,13 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
-    </main>
+      </main>
+
+      {/* Футер страницы — отдельная полоса снизу (как в приложении), не «карточка» */}
+      <footer className="flex h-14 shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t border-border bg-card px-4">
+        <DemoBadge full />
+        <PoweredBySteply />
+      </footer>
+    </div>
   );
 }

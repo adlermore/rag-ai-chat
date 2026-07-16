@@ -36,7 +36,9 @@ class BgeReranker:
         self.name = model or CONFIG.reranker_model
         from FlagEmbedding import FlagReranker  # ленивый импорт
 
-        self._model = FlagReranker(self.name, use_fp16=False)
+        # CPU принудительно: см. комментарий в embedders.BgeM3Embedder (прод — без
+        # GPU; MPS на Mac падает по памяти).
+        self._model = FlagReranker(self.name, use_fp16=False, devices="cpu")
 
     def rerank(self, query: str, candidates: list[tuple[str, str]]) -> list[str]:
         if not candidates:

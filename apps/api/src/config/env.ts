@@ -25,7 +25,24 @@ const envSchema = z.object({
   // Опциональны в Фазе 1 (нужны с Фазы 2+).
   REDIS_URL: z.string().optional(),
   QDRANT_URL: z.string().optional(),
-  INGEST_URL: z.string().optional(),
+  INGEST_URL: z.string().default("http://localhost:8000"),
+  // Каталог загруженных документов. В Docker — общий volume api↔ingest
+  // (ingest читает файл по этому же пути при индексации).
+  UPLOAD_DIR: z.string().default("var/uploads"),
+
+  // ── RAG / чат (Фаза 3) ──
+  LLM_PROVIDER: z.enum(["openai", "anthropic", "stub"]).default("stub"),
+  LLM_MODEL: z.string().default("gpt-4.1-mini"),
+  OPENAI_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+
+  RERANK_TOP_OUT: z.coerce.number().int().default(5),
+  // Двухпороговый guardrail (docs/01-SPEC.md): score reranker'а в [0..1].
+  THRESHOLD_LOW: z.coerce.number().default(0.35),
+  THRESHOLD_HIGH: z.coerce.number().default(0.62),
+
+  CHAT_HISTORY_MAX_MESSAGES: z.coerce.number().int().default(12),
+  CACHE_TTL_SECONDS: z.coerce.number().int().default(604800),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

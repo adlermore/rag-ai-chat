@@ -22,6 +22,16 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 BASE_DIR = Path(__file__).resolve().parent
+
+# Ключи и параметры прогона берутся из apps/ingest/phase0/.env (в .gitignore).
+# Грузим до чтения os.environ ниже; без python-dotenv (smoke-тест) — пропускаем.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(BASE_DIR / ".env")
+except Exception:
+    pass
+
 DATA_DIR = BASE_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"           # сюда кладут документы заказчика
 FIXTURES_DIR = DATA_DIR / "fixtures"  # синтетические данные для smoke-теста

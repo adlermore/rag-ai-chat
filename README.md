@@ -32,21 +32,33 @@ docker/       # docker-compose: postgres, qdrant, redis, minio
 - Docker + Docker Compose (для инфраструктуры)
 - Python ≥ 3.11 (для `apps/ingest`, начиная с Фазы 2)
 
-## Быстрый старт
+## Продовый запуск (один сервер, одна команда)
+
+```bash
+cp .env.example .env          # заполнить секреты (ANTHROPIC_API_KEY для ответов LLM)
+docker compose -f docker/docker-compose.yml --profile app up -d --build
+# web http://localhost:3000 · api :4000 · ingest :8000 · qdrant dashboard :6333/dashboard
+# первый старт ingest качает веса bge-m3/reranker (~2.5GB) в volume hf_models
+# миграции и seed админа (SEED_ADMIN_*) применяются автоматически при старте api
+# ⚠️ на macOS (Docker Desktop = linux-VM) CPU-инференс bge-m3 заметно медленнее,
+#    чем нативно; целевая среда — linux-сервер. Для разработки на Mac — режим ниже.
+```
+
+## Разработка
 
 ```bash
 cp .env.example .env          # заполнить секреты
 pnpm install                  # установка зависимостей монорепо
-pnpm infra:up                 # postgres, redis, qdrant, minio (Docker)
+pnpm infra:up                 # только postgres, redis, qdrant, minio (Docker)
 pnpm --filter @rag/api prisma:migrate   # миграции БД
 pnpm --filter @rag/api seed             # создать первого админа
 pnpm dev                      # web (:3000) + api (:4000) параллельно
+# ingest: cd apps/ingest && pip install -r requirements.txt && uvicorn app.main:app --port 8000
 ```
 
 ## Статус по фазам (см. docs/04-ROADMAP.md)
 
-- **Фаза 0** — проверка армянского retrieval (recall@5 ≥ 0.85). **Блокирующая**,
-  ожидает реальных документов заказчика. Пока не пройдена — Фаза 2 не начинается.
-- **Фаза 1** — каркас (это текущая работа): монорепо, инфраструктура, auth/RBAC,
-  дизайн-система, миграции.
-- Фазы 2–5 — ингестия, RAG-пайплайн, evaluation, аналитика.
+Фазы 0–5 реализованы: армянский retrieval валидирован (recall@5=1.00 на
+eval-датасете), ингестия с админкой (upload/reindex/delete), RAG-чат с
+источниками ⟨n⟩ и двухпороговым guardrail (пороги откалиброваны), аналитика
+и аудит. Оставшиеся хвосты — в `docs/04-ROADMAP.md`.

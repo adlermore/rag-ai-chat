@@ -4,6 +4,7 @@ data/raw/*
 data/chunks.jsonl
 data/questions.jsonl
 data/emb_*.jsonl
+data/_md_cache/
 .venv/
 reports/*
 !reports/.gitkeep

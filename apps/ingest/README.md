@@ -1,24 +1,49 @@
 # apps/ingest — Python FastAPI (Docling, chunking, embeddings)
 
-> ⚠️ **Фаза 1 — только каркас.** Здесь пока лишь `/health` и структура проекта.
-> Реальная логика ингестии добавляется в **Фазе 2**, которая заблокирована
-> **Фазой 0** (проверка армянского retrieval, recall@5 ≥ 0.85). См. `docs/04-ROADMAP.md`.
+Продовый сервис ингестии. Ядро выверено в Фазе 0 (`apps/ingest/phase0`) на реальных
+армянских документах: hybrid+rerank recall@5 = 0.96 (docs/02-ARCHITECTURE.md).
 
-## Что появится в Фазе 2
+## Статус (Фаза 2)
 
-Docling-парсинг PDF/DOCX/XLSX → semantic chunking (Excel: строка + шапка + лист) →
-embeddings батчами (`text-embedding-3-large`) → Qdrant upsert + BM25-индекс →
-reranker `bge-reranker-v2-m3` (CPU). Статусы задач — через BullMQ/Redis, прогресс — SSE в админку.
+**Готово (ядро, проверяется без Docker):**
+- `app/pipeline/` — парсинг PDF/DOCX (Docling) и XLSX (openpyxl, построчно:
+  строка + шапка + лист), чанкинг (300–600 токенов bge-m3, overlap 15%),
+  эмбеддинги `bge-m3` (CPU), BM25 (армянская токенизация), RRF-слияние,
+  reranker `bge-reranker-v2-m3` (CPU).
+- `app/pipeline/vectorstore.py` — Qdrant (dim 1024, cosine): upsert, поиск,
+  удаление по документу, alias для теневой замены. Локальный режим
+  (`QDRANT_PATH=:memory:`/путь) — для тестов/оффлайн.
+- FastAPI: `POST /ingest` (загрузка файла), `GET /search` (гибридный поиск), `/health`.
+- Тесты: `tests/` (unit-чанкинг + интеграция на qdrant `:memory:`).
 
-## Локальный запуск (каркас)
+**Открытые хвосты (следующие инкременты):**
+- **Гранулярность таблиц:** большие таблицы (напр. суточные по странам) режутся
+  на чанки с десятками строк → поиск по одной ячейке («суточные Москва») может не
+  поднять нужную строку. План: резать markdown-таблицы построчно, как Excel.
+- Точные номера страниц из Docling (сейчас `page=None` для PDF/DOCX).
+- BullMQ-очередь + SSE-статусы, Postgres (статусы документов), MinIO (файлы),
+  интеграция с NestJS-api, админка Documents — **ждут установки Docker**.
+- Полноценный армянский стеммер вместо заглушки (`tokenizer_hy.py`).
+
+## Локальный запуск
 
 ```bash
 cd apps/ingest
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-# проверка:
+# оффлайн, без Docker (Qdrant в процессе):
+QDRANT_PATH=:memory: uvicorn app.main:app --reload --port 8000
 curl http://localhost:8000/health
+# с Docker-инфраструктурой:
+#   docker compose -f ../../docker/docker-compose.yml up -d qdrant
+#   uvicorn app.main:app --reload --port 8000
+```
+
+## Тесты
+
+```bash
+cd apps/ingest
+PYTHONPATH=. pytest tests/ -q
 ```
 
 ## Docker
