@@ -65,6 +65,48 @@ function ChatWorkspace() {
     setNavOpen(false);
   }, []);
 
+  // Общая часть: стрим ответа и его финализация (для send и regenerate).
+  const runStream = useCallback(
+    async (chatId: string, text: string, regenerate: boolean) => {
+      let acc = "";
+      let srcs: MessageSource[] = [];
+      setStreamContent("");
+      setStreamSources([]);
+      setPendingMode("search"); // сбрасываем; бэкенд пришлёт "chat" для реплик
+
+      const finalize = (id: string, confidence: Confidence, content: string) => {
+        setMessages((prev) => [
+          ...prev,
+          { id, role: "assistant", content, confidence, sources: srcs },
+        ]);
+        setStreamContent(null);
+        setStreamSources([]);
+        setBusy(false);
+      };
+
+      await streamMessage(
+        chatId,
+        text,
+        {
+          onPhase: (p) => setPendingMode(p),
+          onToken: (v) => {
+            acc += v;
+            setStreamContent(acc);
+          },
+          onSources: (s) => {
+            srcs = s;
+            setStreamSources(s);
+          },
+          onDone: (id, confidence) => finalize(id, confidence, acc),
+          onError: () =>
+            finalize(`e-${Date.now()}`, "refused", t("chat.streamError")),
+        },
+        { regenerate },
+      );
+    },
+    [],
+  );
+
   const send = useCallback(
     async (text: string) => {
       setBusy(true);
@@ -86,46 +128,29 @@ function ChatWorkspace() {
         ...prev,
         { id: `u-${Date.now()}`, role: "user", content: text },
       ]);
-
-      let acc = "";
-      let srcs: MessageSource[] = [];
-      setStreamContent("");
-      setStreamSources([]);
-      setPendingMode("search"); // сбрасываем; бэкенд пришлёт "chat" для реплик
-
-      const finalize = (
-        id: string,
-        confidence: Confidence,
-        content: string,
-      ) => {
-        setMessages((prev) => [
-          ...prev,
-          { id, role: "assistant", content, confidence, sources: srcs },
-        ]);
-        setStreamContent(null);
-        setStreamSources([]);
-        setBusy(false);
-      };
-
-      await streamMessage(chatId, text, {
-        onPhase: (p) => setPendingMode(p),
-        onToken: (v) => {
-          acc += v;
-          setStreamContent(acc);
-        },
-        onSources: (s) => {
-          srcs = s;
-          setStreamSources(s);
-        },
-        onDone: (id, confidence) => finalize(id, confidence, acc),
-        onError: () =>
-          finalize(`e-${Date.now()}`, "refused", t("chat.streamError")),
-      });
+      await runStream(chatId, text, false);
     },
-    [activeId],
+    [activeId, runStream],
   );
 
+  // Перегенерация: убираем последний ответ ассистента и просим свежий (обход кэша).
+  const regenerate = useCallback(async () => {
+    if (!activeId || busy) return;
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    if (!lastUser) return;
+    setBusy(true);
+    setMessages((prev) => {
+      const idx = prev.map((m) => m.role).lastIndexOf("assistant");
+      return idx >= 0 ? prev.filter((_, i) => i !== idx) : prev;
+    });
+    await runStream(activeId, lastUser.content, true);
+  }, [activeId, busy, messages, runStream]);
+
   const showEmpty = messages.length === 0 && streamContent === null;
+  // id последнего ответа ассистента — только у него показываем «Վерстеղծել».
+  const lastAssistantId = [...messages]
+    .reverse()
+    .find((m) => m.role === "assistant")?.id;
 
   // Содержимое сайдбара — общее для desktop-колонки и мобильной панели.
   const sidebarContent = (
@@ -290,7 +315,18 @@ function ChatWorkspace() {
             <div className="mx-auto w-full max-w-3xl px-4 py-8">
               <div className="space-y-5">
                 {messages.map((m) => (
-                  <MessageBubble key={m.id} message={m} />
+                  <MessageBubble
+                    key={m.id}
+                    message={m}
+                    onRegenerate={
+                      streamContent === null &&
+                      !busy &&
+                      m.role === "assistant" &&
+                      m.id === lastAssistantId
+                        ? regenerate
+                        : undefined
+                    }
+                  />
                 ))}
                 {streamContent !== null && (
                   <MessageBubble

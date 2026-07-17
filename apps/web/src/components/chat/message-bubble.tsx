@@ -18,6 +18,7 @@ import {
   FileText,
   Info,
   MessageSquare,
+  RotateCw,
   Search,
   Sparkles,
 } from "lucide-react";
@@ -246,10 +247,13 @@ export function MessageBubble({
   message,
   streaming = false,
   pendingMode = "search",
+  onRegenerate,
 }: {
   message: ChatMessage;
   streaming?: boolean;
   pendingMode?: "search" | "chat";
+  /** Если задан — под ответом показывается кнопка «Վերստեղծել» (регенерация). */
+  onRegenerate?: () => void;
 }) {
   // Хук — до любых ранних return (правила хуков React).
   const [selectedSource, setSelectedSource] = useState<MessageSource | null>(null);
@@ -330,6 +334,17 @@ export function MessageBubble({
                 ))}
               </ul>
             </div>
+          )}
+
+          {onRegenerate && !streaming && (
+            <button
+              type="button"
+              onClick={onRegenerate}
+              className="mt-2.5 inline-flex items-center gap-1.5 rounded-md text-[12px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <RotateCw className="size-3.5" />
+              {t("chat.regenerate")}
+            </button>
           )}
         </div>
       </AssistantRow>

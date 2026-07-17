@@ -92,15 +92,34 @@ export class ChatService {
     chatId: string,
     userId: string,
     content: string,
+    opts: { regenerate?: boolean } = {},
   ): AsyncGenerator<ChatStreamEvent> {
     await this.assertOwnedChat(chatId, userId);
 
-    // Историю читаем ДО записи вопроса (для rewrite нужен прошлый контекст).
-    const history = await this.recentHistory(chatId);
+    // Регенерация: удаляем прошлый ответ ассистента (источники — каскадом),
+    // вопрос повторно не пишем.
+    if (opts.regenerate) {
+      const lastAnswer = await this.prisma.message.findFirst({
+        where: { chatId, role: MessageRole.assistant },
+        orderBy: { createdAt: "desc" },
+      });
+      if (lastAnswer) {
+        await this.prisma.message.delete({ where: { id: lastAnswer.id } });
+      }
+    }
 
-    await this.prisma.message.create({
-      data: { chatId, role: MessageRole.user, content },
-    });
+    // Историю читаем ДО записи вопроса (для rewrite нужен прошлый контекст).
+    let history = await this.recentHistory(chatId);
+
+    if (!opts.regenerate) {
+      await this.prisma.message.create({
+        data: { chatId, role: MessageRole.user, content },
+      });
+    } else {
+      // При регенерации вопрос уже в истории (ответ удалён) — исключаем его,
+      // чтобы он не дублировался в контексте генерации.
+      history = history.slice(0, -1);
+    }
 
     // Разговорная реплика (приветствие/благодарность/прощание/«что умеешь») —
     // это НЕ вопрос к базе. Отвечаем сразу, без retrieval и без LLM (0 токенов,
@@ -150,7 +169,8 @@ export class ChatService {
     }
 
     // Кэш: нормализованный переписанный вопрос → готовый ответ.
-    const cached = await this.cache.get(query);
+    // При регенерации кэш обходим — нужен свежий ответ.
+    const cached = opts.regenerate ? null : await this.cache.get(query);
     if (cached) {
       const saved = await this.persistAnswer(chatId, cached, { cached: true });
       yield { type: "token", value: cached.content };
