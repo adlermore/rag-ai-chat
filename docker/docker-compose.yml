@@ -66,7 +66,8 @@ services:
       # На CPU-серверах со слабой машиной задать RERANKER_BACKEND=torch в .env —
       # ONNX-квантизация reranker'а на них нестабильна (утечка temp в /tmp).
       RERANKER_BACKEND: ${RERANKER_BACKEND:-onnx-int8}
-      RERANK_TOP_IN: "10"   # perf: reranker — главный CPU-пожиратель retrieval
+      # perf: reranker — главный CPU-пожиратель. На слабом CPU уменьшить (напр. 6).
+      RERANK_TOP_IN: ${RERANK_TOP_IN:-10}
       # OMP-потоки под число ядер (перекрыть в .env; 8>ядер даёт пробуксовку).
       OMP_NUM_THREADS: ${OMP_NUM_THREADS:-8}
     ports:
