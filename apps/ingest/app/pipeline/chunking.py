@@ -96,6 +96,36 @@ def _parse_table_rows(table_text: str) -> list[list[str]]:
     return rows
 
 
+def _has_digit(cells: list[str]) -> bool:
+    return any(ch.isdigit() for c in cells for ch in c)
+
+
+def _merge_header_rows(rows: list[list[str]]) -> tuple[list[str], list[list[str]]]:
+    """Склеивает многоярусную шапку в одну строку меток.
+
+    Docling отдаёт двухъярусную шапку (объединённые ячейки + подзаголовки вроде
+    «նվազագույնը/առավելագույնը») отдельными строками, дублируя объединённую
+    ячейку в каждую колонку. Строку сразу после шапки без единой цифры считаем
+    её продолжением — но только если ниже есть строки с цифрами (таблицы из
+    чистого текста не трогаем).
+    """
+    header = list(rows[0])
+    data = rows[1:]
+    merged = 0
+    while (
+        data
+        and merged < 2
+        and not _has_digit(data[0])
+        and any(_has_digit(r) for r in data[1:])
+    ):
+        for j, c in enumerate(data[0]):
+            if c and j < len(header) and c != header[j]:
+                header[j] = f"{header[j]} {c}".strip()
+        data = data[1:]
+        merged += 1
+    return header, data
+
+
 def _table_row_texts(rows: list[list[str]]) -> list[str]:
     """Строки таблицы → самодостаточные тексты «шапка: значение | …».
 
@@ -105,10 +135,18 @@ def _table_row_texts(rows: list[list[str]]) -> list[str]:
     """
     if not rows:
         return []
-    header = rows[0]
+    header, data = _merge_header_rows(rows)
+    if not data:
+        # Таблица без строк данных (артефакт вёрстки) — отдаём шапку без дублей
+        # объединённых ячеек, чтобы не потерять содержимое.
+        seen: list[str] = []
+        for c in header:
+            if c and (not seen or c != seen[-1]):
+                seen.append(c)
+        return [" | ".join(seen)] if seen else []
     group_ctx: str | None = None
     out: list[str] = []
-    for cells in rows[1:]:
+    for cells in data:
         nonempty = [i for i, c in enumerate(cells) if c]
         if not nonempty:
             continue
@@ -184,14 +222,18 @@ def chunk_text(
     row_chunks_after: dict[int, list[str]] = {}  # позиция → готовые строки-чанки
     for kind, block in _split_table_blocks(_clean_markdown(text)):
         if kind == "table":
-            rows = _parse_table_rows(block)
-            flat = " ".join(" ".join(c for c in r if c) for r in rows)
-            if count_tokens(flat) <= target:
-                units.append(flat)  # маленькая таблица — обычный сегмент
+            # Любая таблица рендерится строками «шапка: значение | …»: сырой
+            # склейкой ячеек шапка (с дублями объединённых ячеек от Docling)
+            # превращалась в нечитаемый «суп» в начале чанка и в сниппете
+            # источника. Маленькая таблица остаётся одним сегментом.
+            row_texts = _table_row_texts(_parse_table_rows(block))
+            if not row_texts:
+                continue
+            joined = "\n".join(row_texts)
+            if count_tokens(joined) <= target:
+                units.append(joined)
             else:
-                row_chunks_after.setdefault(len(units), []).extend(
-                    _table_row_texts(rows)
-                )
+                row_chunks_after.setdefault(len(units), []).extend(row_texts)
         else:
             for para in _split_paragraphs(block):
                 units.extend(_segments(para, target))
