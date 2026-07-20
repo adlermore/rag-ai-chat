@@ -62,6 +62,24 @@ class IngestPipeline:
         ids = list(self._texts)
         self._bm25 = BM25.from_texts([self._texts[i] for i in ids], ids)
 
+    def restore_from_store(self, collection: str | None = None) -> int:
+        """Восстанавливает in-memory тексты/BM25 из Qdrant после рестарта.
+
+        BM25-индекс и тексты чанков живут только в памяти процесса; при
+        перезапуске контейнера (деплой, ребут сервера) они обнуляются, и
+        гибридный поиск молча деградировал бы до dense-only, пока документы не
+        переиндексируют вручную. Здесь корпус поднимается обратно из Qdrant без
+        повторного эмбеддинга. Идемпотентно, дёшево (только чтение payload)."""
+        collection = collection or self.cfg.collection
+        self._texts.clear()
+        self._doc_chunks.clear()
+        for chunk_id, document_id, text in self.store.iter_chunks(collection):
+            self._texts[chunk_id] = text
+            if document_id:
+                self._doc_chunks.setdefault(document_id, []).append(chunk_id)
+        self._rebuild_bm25()
+        return len(self._texts)
+
     # ── ингестия ──
     def ingest_document(
         self,

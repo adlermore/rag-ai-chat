@@ -50,6 +50,13 @@ def warmup() -> None:
             p.embedder.embed(["warmup"])
             p.reranker.rerank("warmup", [("w", "warmup")])
             print("[warmup] модели загружены и готовы", flush=True)
+            # BM25 живёт только в памяти — после рестарта поднимаем корпус из
+            # Qdrant, иначе гибридный поиск молча деградирует до dense-only.
+            try:
+                n = p.restore_from_store()
+                print(f"[warmup] BM25 восстановлен из Qdrant: {n} чанков", flush=True)
+            except Exception as e:  # noqa: BLE001
+                print(f"[warmup] восстановление BM25 не удалось: {e}", flush=True)
         except Exception as e:  # noqa: BLE001
             print(f"[warmup] не удался (продолжаем лениво): {e}", flush=True)
 

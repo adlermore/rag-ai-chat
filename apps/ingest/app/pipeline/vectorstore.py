@@ -88,6 +88,27 @@ class VectorStore:
             for p in resp.points
         ]
 
+    def iter_chunks(self, name: str, *, batch: int = 500):
+        """Обходит все точки коллекции, отдавая (chunk_id, document_id, text).
+
+        Нужно для восстановления in-memory BM25 после рестарта контейнера —
+        корпус живёт в Qdrant, а BM25-индекс держится только в памяти процесса.
+        """
+        offset = None
+        while True:
+            points, offset = self.client.scroll(
+                collection_name=name,
+                limit=batch,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+            for p in points:
+                payload = p.payload or {}
+                yield str(p.id), payload.get("document_id"), payload.get("text", "")
+            if offset is None:
+                break
+
     def delete_document(self, name: str, document_id: str) -> None:
         self.client.delete(
             collection_name=name,
