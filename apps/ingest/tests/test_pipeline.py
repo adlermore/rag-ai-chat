@@ -53,6 +53,27 @@ def test_ingest_xlsx_and_retrieve_target_row(tmp_path: Path) -> None:
     assert hits[0].payload.get("row") == 3
 
 
+def test_bm25_restored_from_store_after_restart(tmp_path: Path) -> None:
+    """Рестарт контейнера обнуляет in-memory BM25; restore_from_store поднимает
+    корпус обратно из Qdrant, и keyword-путь снова работает (без ре-эмбеддинга)."""
+    xlsx = tmp_path / "tariffs.xlsx"
+    _make_xlsx(xlsx)
+    store = VectorStore()  # общий :memory: клиент — переживает "рестарт" пайплайна
+    pipe = IngestPipeline(store=store, embedder=FakeEmbedder(),
+                          reranker=IdentityReranker())
+    pipe.ingest_document(str(xlsx), document_id="tariffs", version=1)
+
+    # Новый пайплайн на том же Qdrant = свежий процесс: тексты/BM25 пусты.
+    fresh = IngestPipeline(store=store, embedder=FakeEmbedder(),
+                           reranker=IdentityReranker())
+    assert fresh._bm25 is None
+    restored = fresh.restore_from_store()
+    assert restored == 3
+    assert fresh._doc_chunks.get("tariffs")
+    hits = fresh.search("Կալիֆոռնիա նահանգի ամսական վճարը", top_out=3)
+    assert hits and "Կալիֆոռնիա" in hits[0].payload.get("text", "")
+
+
 def test_supported_formats_rejected(tmp_path: Path) -> None:
     import pytest
 
