@@ -71,7 +71,9 @@ export class ChatController {
       reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
 
     try {
-      for await (const event of this.chat.streamAnswer(id, user.id, body.content)) {
+      for await (const event of this.chat.streamAnswer(id, user.id, body.content, {
+        regenerate: body.regenerate,
+      })) {
         send(event);
       }
     } catch (e) {

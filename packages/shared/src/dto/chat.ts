@@ -10,6 +10,9 @@ export type CreateChatRequest = z.infer<typeof createChatSchema>;
 /** Отправка вопроса пользователя (ответ приходит SSE-стримом). */
 export const sendMessageSchema = z.object({
   content: z.string().min(1).max(4000),
+  // regenerate — перегенерировать ответ на последний вопрос: удаляет прошлый
+  // ответ ассистента, не дублирует вопрос, обходит кэш (свежая генерация).
+  regenerate: z.boolean().optional(),
 });
 export type SendMessageRequest = z.infer<typeof sendMessageSchema>;
 

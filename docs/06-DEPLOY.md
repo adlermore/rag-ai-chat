@@ -104,9 +104,13 @@ docker compose -f docker/docker-compose.yml logs -f api web ingest
 
 Добавьте в `.env`:
 ```dotenv
-RERANKER_BACKEND=torch   # ONNX-квантизация reranker'а на слабом CPU нестабильна
-OMP_NUM_THREADS=4        # под число ядер (8>ядер даёт пробуксовку потоков)
+RERANKER_BACKEND=onnx-int8   # ONNX int8 reranker — в 2-4× быстрее torch на CPU
+OMP_NUM_THREADS=4            # под число ядер (8>ядер даёт пробуксовку потоков)
+RERANK_TOP_IN=6             # меньше кандидатов реранкинга → быстрее (по умолч. 10)
 ```
+Замер на Hetzner CX32: гибридный поиск ~45с (torch, top_in=10) → **~6с**
+(onnx-int8, top_in=6). ONNX-модель квантуется один раз при старте (~4 мин) и
+кэшируется в volume `/models`.
 Docling парсит таблицы в режиме `TableFormerMode.FAST` (иначе многостраничный PDF
 на CPU обрабатывается десятки минут). Индексация большого документа (~1000+
 чанков) на 4 vCPU занимает 15–20 мин — это нормально (эмбеддинг на CPU).

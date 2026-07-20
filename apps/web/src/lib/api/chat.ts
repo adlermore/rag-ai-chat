@@ -50,6 +50,7 @@ export async function streamMessage(
   chatId: string,
   content: string,
   h: StreamHandlers,
+  opts: { regenerate?: boolean } = {},
 ): Promise<void> {
   let res: Response;
   try {
@@ -59,7 +60,7 @@ export async function streamMessage(
         "Content-Type": "application/json",
         Authorization: `Bearer ${tokenStorage.access ?? ""}`,
       },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, regenerate: opts.regenerate }),
     });
   } catch {
     h.onError("network");
